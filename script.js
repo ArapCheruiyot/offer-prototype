@@ -1,4 +1,4 @@
-const CLIENT_ID = "YOUR_GOOGLE_CLIENT_ID";
+const CLIENT_ID = "958416089916-1embl17stmkectofeqb74c54ccs38rb5.apps.googleusercontent.com";
 const API_KEY = "YOUR_GOOGLE_API_KEY";
 const SCOPES = "https://www.googleapis.com/auth/drive.readonly";
 let tokenClient;
