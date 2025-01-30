@@ -15,7 +15,7 @@ function initGoogleAPI() {
 // Authenticate User
 document.getElementById("authButton").addEventListener("click", () => {
     if (!tokenClient) {
-        tokenClient = google.accounts.oauth2.initTokenClient({  // ✅ Fix: Ensure GIS library loads
+        tokenClient = google.accounts.oauth2.initTokenClient({
             client_id: CLIENT_ID,
             scope: SCOPES,
             callback: (tokenResponse) => {
@@ -25,4 +25,44 @@ document.getElementById("authButton").addEventListener("click", () => {
         });
     }
     tokenClient.requestAccessToken();
+});
+
+// Search Google Drive for Excel Files
+document.getElementById("searchButton").addEventListener("click", async () => {
+    const searchTerm = document.getElementById("searchTerm").value.trim();
+    if (!searchTerm) {
+        alert("Please enter a search term.");
+        return;
+    }
+
+    try {
+        const response = await gapi.client.drive.files.list({
+            q: `name contains '${searchTerm}' and (mimeType='application/vnd.ms-excel' or mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' or mimeType='text/csv')`,
+            fields: "files(id, name, webViewLink)",
+            spaces: "drive",
+            pageSize: 10,
+        });
+
+        const files = response.result.files;
+        const resultsDiv = document.getElementById("results");
+        resultsDiv.innerHTML = ""; // Clear previous results
+
+        if (!files || files.length === 0) {
+            resultsDiv.innerHTML = "<p>No matching Excel files found.</p>";
+            return;
+        }
+
+        files.forEach(file => {
+            const link = document.createElement("a");
+            link.href = file.webViewLink;
+            link.textContent = file.name;
+            link.target = "_blank";
+            resultsDiv.appendChild(link);
+            resultsDiv.appendChild(document.createElement("br"));
+        });
+
+    } catch (error) {
+        console.error("Error searching files:", error);
+        alert("Error searching for files. Check console for details.");
+    }
 });
