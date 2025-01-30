@@ -57,9 +57,9 @@ document.getElementById("searchButton").addEventListener("click", async () => {
     console.log("Searching for files containing:", searchTerm);
 
     try {
-        // Make the API request
+        // Make the API request to search for Excel files
         const response = await gapi.client.drive.files.list({
-            q: `name contains '${searchTerm}' and (mimeType='application/vnd.ms-excel' or mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' or mimeType='text/csv')`,
+            q: `mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' or mimeType='application/vnd.ms-excel'`,
             fields: "files(id, name, webViewLink)",
             spaces: "drive",
             pageSize: 10,
@@ -72,7 +72,7 @@ document.getElementById("searchButton").addEventListener("click", async () => {
         resultsDiv.innerHTML = ""; // Clear previous results
 
         if (!files || files.length === 0) {
-            resultsDiv.innerHTML = "<p>No matching Excel files found.</p>";
+            resultsDiv.innerHTML = "<p>No Excel files found in Google Drive.</p>";
             return;
         }
 
@@ -83,6 +83,25 @@ document.getElementById("searchButton").addEventListener("click", async () => {
             link.target = "_blank";
             resultsDiv.appendChild(link);
             resultsDiv.appendChild(document.createElement("br"));
+
+            // Add an event listener to fetch file contents
+            link.addEventListener("click", async (e) => {
+                e.preventDefault();
+                const fileId = file.id;
+                const fileName = file.name;
+                alert("Opening file: " + fileName);
+
+                // Fetch the file content
+                const fileContent = await fetchFileContent(fileId);
+                if (fileContent) {
+                    const recordFound = searchInExcel(fileContent, searchTerm);
+                    if (recordFound) {
+                        alert("Record found!");
+                    } else {
+                        alert("Record not found.");
+                    }
+                }
+            });
         });
 
     } catch (error) {
@@ -90,3 +109,46 @@ document.getElementById("searchButton").addEventListener("click", async () => {
         alert("Error searching for files. Check the console for details.");
     }
 });
+
+// Fetch the file content from Google Drive
+async function fetchFileContent(fileId) {
+    try {
+        const response = await gapi.client.drive.files.get({
+            fileId: fileId,
+            alt: "media", // Request file content
+        });
+
+        const fileContent = response.body;
+        return fileContent;
+    } catch (error) {
+        console.error("Error fetching file content:", error);
+        alert("Error fetching file content. Check console for details.");
+    }
+}
+
+// Search for a record in the Excel file
+function searchInExcel(fileContent, searchTerm) {
+    // Parse the Excel file using the xlsx.js library
+    try {
+        const workbook = XLSX.read(fileContent, { type: "binary" });
+        let recordFound = false;
+
+        workbook.SheetNames.forEach(sheetName => {
+            const sheet = workbook.Sheets[sheetName];
+            const data = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+            // Search for the term in each row and column
+            for (let row of data) {
+                if (row.some(cell => cell && cell.toString().includes(searchTerm))) {
+                    recordFound = true;
+                }
+            }
+        });
+
+        return recordFound;
+    } catch (error) {
+        console.error("Error parsing Excel file:", error);
+        alert("Error processing the Excel file.");
+        return false;
+    }
+}
