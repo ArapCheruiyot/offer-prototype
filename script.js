@@ -1,27 +1,28 @@
 const CLIENT_ID = "743264679221-omplmhe5mj6vo37dbtk2dgj5vcfv6p4k.apps.googleusercontent.com";
-const API_KEY = "YOUR_GOOGLE_API_KEY";
+const API_KEY = "YOUR_GOOGLE_API_KEY";  // 🔴 Replace with your real API Key
 const SCOPES = "https://www.googleapis.com/auth/drive.readonly";
 
 let tokenClient;
 let gapiInitialized = false;
 
-// Initialize Google API
+// ✅ Step 1: Initialize Google API
 function initGoogleAPI() {
-    console.log("Initializing Google API...");
-    gapi.load("client:auth2", () => {
-        gapi.client.init({
-            apiKey: API_KEY,
-            discoveryDocs: ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"],
-        }).then(() => {
+    console.log("⏳ Initializing Google API...");
+    gapi.load("client:auth2", async () => {
+        try {
+            await gapi.client.init({
+                apiKey: API_KEY,
+                discoveryDocs: ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"],
+            });
             gapiInitialized = true;
-            console.log("Google API Initialized ✅");
-        }).catch(error => {
-            console.error("Error initializing Google API:", error);
-        });
+            console.log("✅ Google API Initialized Successfully");
+        } catch (error) {
+            console.error("❌ Google API Initialization Failed:", error);
+        }
     });
 }
 
-// Authenticate User
+// ✅ Step 2: Authenticate User
 document.getElementById("authButton").addEventListener("click", () => {
     if (!tokenClient) {
         tokenClient = google.accounts.oauth2.initTokenClient({
@@ -29,6 +30,7 @@ document.getElementById("authButton").addEventListener("click", () => {
             scope: SCOPES,
             callback: (tokenResponse) => {
                 gapi.client.setToken(tokenResponse);
+                console.log("✅ Authentication Successful");
                 alert("Authenticated! You can now search Excel files.");
             },
         });
@@ -36,7 +38,7 @@ document.getElementById("authButton").addEventListener("click", () => {
     tokenClient.requestAccessToken();
 });
 
-// Search Google Drive for Excel Files and Open Them
+// ✅ Step 3: Search Google Drive for Excel Files
 document.getElementById("searchButton").addEventListener("click", async () => {
     if (!gapiInitialized) {
         alert("Google API not initialized yet. Please wait a few seconds and try again.");
@@ -50,7 +52,7 @@ document.getElementById("searchButton").addEventListener("click", async () => {
     }
 
     try {
-        console.log("Searching for Excel files...");
+        console.log("🔎 Searching for Excel files in Google Drive...");
         const response = await gapi.client.drive.files.list({
             q: "(mimeType='application/vnd.ms-excel' or mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' or mimeType='text/csv')",
             fields: "files(id, name, webViewLink)",
@@ -63,7 +65,8 @@ document.getElementById("searchButton").addEventListener("click", async () => {
         resultsDiv.innerHTML = ""; // Clear previous results
 
         if (!files || files.length === 0) {
-            resultsDiv.innerHTML = "<p>No Excel files found in your Drive.</p>";
+            resultsDiv.innerHTML = "<p>No Excel files found in your Google Drive.</p>";
+            console.log("❌ No Excel files found.");
             return;
         }
 
@@ -76,5 +79,33 @@ document.getElementById("searchButton").addEventListener("click", async () => {
             resultsDiv.appendChild(fileLink);
             resultsDiv.appendChild(document.createElement("br"));
 
-            // Now read file contents and search for term
-            await searchIn
+            console.log(`📂 Found file: ${file.name} (ID: ${file.id})`);
+
+            // ✅ Step 4: Read the file and search for the term
+            await searchInExcelFile(file.id, searchTerm);
+        }
+    } catch (error) {
+        console.error("❌ Error searching files:", error);
+        alert("Error searching for files. Check console for details.");
+    }
+});
+
+// ✅ Step 4: Open & Search Inside Each Excel File
+async function searchInExcelFile(fileId, searchTerm) {
+    try {
+        console.log(`📖 Opening file ${fileId} to search for "${searchTerm}"...`);
+
+        // Step 4.1: Download the file content as text
+        const response = await gapi.client.drive.files.get({
+            fileId: fileId,
+            alt: "media",
+        });
+
+        // Step 4.2: Extract file content
+        const fileContent = response.body;
+        console.log("📄 File Content Loaded:", fileContent.substring(0, 500)); // Show only first 500 characters
+
+        // Step 4.3: Search for the term in the file content
+        if (fileContent.includes(searchTerm)) {
+            alert(`✅ Match found in file: ${fileId}`);
+   
