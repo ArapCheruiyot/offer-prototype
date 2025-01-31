@@ -3,38 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Google Drive Excel Search</title>
-    <script src="https://apis.google.com/js/api.js" defer></script>
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            margin: 20px;
-        }
-        input, button {
-            margin: 10px;
-            padding: 10px;
-            font-size: 16px;
-        }
-        #results {
-            margin-top: 20px;
-            text-align: left;
-            display: inline-block;
-            max-width: 600px;
-        }
-    </style>
+    <title>Customer Offer Search</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+    <script src="https://apis.google.com/js/api.js"></script>
+    <script src="script.js" defer></script>
 </head>
 <body>
-    <h1>Search Google Drive Excel Files</h1>
-    <div>
-        <button id="authButton">Authenticate</button>
-    </div>
-    <div>
-        <input type="text" id="searchTerm" placeholder="Enter search value">
+    <div class="container">
+        <h2>Customer Offer Search</h2>
+
+        <!-- Button to Authenticate and List Google Drive Files -->
+        <button id="authButton">Authenticate and List Files</button>
+        
+        <div class="file-list" id="fileList">
+            <h3>Files from Google Drive:</h3>
+        </div>
+
+        <!-- Search Box -->
+        <input type="text" id="searchInput" placeholder="Enter customer number">
         <button id="searchButton">Search</button>
+
+        <!-- Result Display -->
+        <div id="resultContainer"></div>
     </div>
-    <div id="results"></div>
-    <script src="script.js"></script>
 </body>
 </html>
