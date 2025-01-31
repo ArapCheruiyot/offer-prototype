@@ -3,30 +3,72 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Customer Offer Search</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>Google Drive Excel Search</title>
+    
+    <!-- Google API Client -->
+    <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
+    <!-- Google Identity Services -->
+    <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
+    
+    <!-- SheetJS for Excel Parsing -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
-    <script src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
-    <script src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
-    <script src="script.js" defer></script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            text-align: center;
+        }
+        h1 {
+            color: #333;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        input, button {
+            padding: 10px;
+            margin: 10px;
+            font-size: 16px;
+        }
+        #fileList {
+            text-align: left;
+            margin-top: 20px;
+        }
+        .file-item {
+            padding: 5px;
+            border-bottom: 1px solid #ddd;
+        }
+        .result {
+            background-color: #e3f2fd;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .no-result {
+            color: red;
+        }
+    </style>
 </head>
 <body>
+
+    <h1>Search Customer in Excel (Google Drive)</h1>
+
     <div class="container">
-        <h2>Customer Offer Search</h2>
-
-        <!-- Button to Authenticate and List Google Drive Files -->
-        <button id="authButton" disabled>Authenticate and List Files</button>
+        <button id="authButton" disabled>Authenticate & Load Files</button>
         
-        <div class="file-list" id="fileList">
-            <h3>Files from Google Drive:</h3>
-        </div>
+        <div id="fileList"></div>
 
-        <!-- Search Box -->
-        <input type="text" id="searchInput" placeholder="Enter customer number">
+        <input type="text" id="searchInput" placeholder="Enter Customer Number">
         <button id="searchButton">Search</button>
 
-        <!-- Result Display -->
         <div id="resultContainer"></div>
     </div>
+
+    <script src="script.js"></script>
 </body>
 </html>
