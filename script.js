@@ -38,11 +38,10 @@ document.getElementById("authButton").addEventListener("click", () => {
     tokenClient.requestAccessToken();
 });
 
-// Search Google Drive for Excel Files
+// Search Google Drive for Excel Files and Parse them
 document.getElementById("searchButton").addEventListener("click", async () => {
     console.log("Search button clicked");
 
-    // Check if API is initialized and user is authenticated
     if (!gapiInitialized) {
         alert("Google API not initialized yet. Try again in a few seconds.");
         return;
@@ -57,15 +56,12 @@ document.getElementById("searchButton").addEventListener("click", async () => {
     console.log("Searching for files containing:", searchTerm);
 
     try {
-        // Make the API request to search for Excel files
         const response = await gapi.client.drive.files.list({
             q: `mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' or mimeType='application/vnd.ms-excel'`,
-            fields: "files(id, name, webViewLink)",
+            fields: "files(id, name)",
             spaces: "drive",
             pageSize: 10,
         });
-
-        console.log("Drive API response:", response);
 
         const files = response.result.files;
         const resultsDiv = document.getElementById("results");
@@ -76,33 +72,32 @@ document.getElementById("searchButton").addEventListener("click", async () => {
             return;
         }
 
-        files.forEach(file => {
-            const link = document.createElement("a");
-            link.href = file.webViewLink;
-            link.textContent = file.name;
-            link.target = "_blank";
-            resultsDiv.appendChild(link);
-            resultsDiv.appendChild(document.createElement("br"));
+        let recordFound = false;
+        let foundInFiles = [];
 
-            // Add an event listener to fetch file contents
-            link.addEventListener("click", async (e) => {
-                e.preventDefault();
-                const fileId = file.id;
-                const fileName = file.name;
-                alert("Opening file: " + fileName);
+        for (const file of files) {
+            console.log("Checking file:", file.name);
+            const fileContent = await fetchFileContent(file.id);
 
-                // Fetch the file content
-                const fileContent = await fetchFileContent(fileId);
-                if (fileContent) {
-                    const recordFound = searchInExcel(fileContent, searchTerm);
-                    if (recordFound) {
-                        alert("Record found!");
-                    } else {
-                        alert("Record not found.");
-                    }
+            if (fileContent) {
+                const found = searchInExcel(fileContent, searchTerm);
+                if (found) {
+                    recordFound = true;
+                    foundInFiles.push(file.name);
                 }
+            }
+        }
+
+        // Display results
+        if (recordFound) {
+            resultsDiv.innerHTML = `<p>Record found in the following files:</p><ul>`;
+            foundInFiles.forEach(fileName => {
+                resultsDiv.innerHTML += `<li>${fileName}</li>`;
             });
-        });
+            resultsDiv.innerHTML += `</ul>`;
+        } else {
+            resultsDiv.innerHTML = `<p>No matching records found in any Excel files.</p>`;
+        }
 
     } catch (error) {
         console.error("Error searching files:", error);
@@ -115,40 +110,36 @@ async function fetchFileContent(fileId) {
     try {
         const response = await gapi.client.drive.files.get({
             fileId: fileId,
-            alt: "media", // Request file content
+            alt: "media",
         });
 
-        const fileContent = response.body;
-        return fileContent;
+        return response.body;
     } catch (error) {
         console.error("Error fetching file content:", error);
-        alert("Error fetching file content. Check console for details.");
+        return null;
     }
 }
 
 // Search for a record in the Excel file
 function searchInExcel(fileContent, searchTerm) {
-    // Parse the Excel file using the xlsx.js library
     try {
         const workbook = XLSX.read(fileContent, { type: "binary" });
-        let recordFound = false;
+        let found = false;
 
         workbook.SheetNames.forEach(sheetName => {
             const sheet = workbook.Sheets[sheetName];
             const data = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
-            // Search for the term in each row and column
             for (let row of data) {
                 if (row.some(cell => cell && cell.toString().includes(searchTerm))) {
-                    recordFound = true;
+                    found = true;
                 }
             }
         });
 
-        return recordFound;
+        return found;
     } catch (error) {
         console.error("Error parsing Excel file:", error);
-        alert("Error processing the Excel file.");
         return false;
     }
 }
