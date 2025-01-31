@@ -1,27 +1,30 @@
+// Ensure these functions are defined in the global scope
+window.gapiLoaded = function () {
+    gapi.load('client', initializeGapiClient);
+};
+
+window.gisLoaded = function () {
+    gisInited = true;
+    maybeEnableButtons();
+};
+
 let uploadedFiles = [];
 let fileData = {}; // To store the data read from the files
 let gapiInited = false;
 let gisInited = false;
 
-// Load the Google API client library
-function gapiLoaded() {
-    gapi.load('client', initializeGapiClient);
-}
-
 // Initialize the Google API client
 async function initializeGapiClient() {
-    await gapi.client.init({
-        'apiKey': 'YOUR_API_KEY', // Replace with your API key
-        'discoveryDocs': ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
-    });
-    gapiInited = true;
-    maybeEnableButtons();
-}
-
-// Callback when the Google Identity Services library is loaded
-function gisLoaded() {
-    gisInited = true;
-    maybeEnableButtons();
+    try {
+        await gapi.client.init({
+            'apiKey': 'YOUR_API_KEY', // Replace with your API key
+            'discoveryDocs': ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
+        });
+        gapiInited = true;
+        maybeEnableButtons();
+    } catch (error) {
+        console.error('Error initializing GAPI client:', error);
+    }
 }
 
 // Enable buttons only when both libraries are loaded
@@ -63,6 +66,7 @@ async function listFiles() {
         });
     } catch (err) {
         document.getElementById('resultContainer').innerHTML = '<div class="no-result">Error listing files.</div>';
+        console.error('Error listing files:', err);
         return;
     }
     const files = response.result.files;
@@ -96,6 +100,7 @@ async function readExcelFile(fileId, fileName) {
         }, { responseType: 'arraybuffer' });
     } catch (err) {
         document.getElementById('resultContainer').innerHTML = '<div class="no-result">Error reading file.</div>';
+        console.error('Error reading file:', err);
         return;
     }
     const data = new Uint8Array(response.body);
@@ -152,9 +157,3 @@ function excelDateToJSDate(excelDate) {
     const epoch = new Date(Date.UTC(1970, 0, 1));
     return new Date(epoch.getTime() + (excelDate - 25569) * msPerDay);
 }
-
-// Initialize the Google API and GIS libraries
-window.onload = () => {
-    gapiLoaded();
-    gisLoaded();
-};
