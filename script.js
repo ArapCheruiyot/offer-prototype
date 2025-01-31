@@ -1,11 +1,10 @@
 const CLIENT_ID = "743264679221-omplmhe5mj6vo37dbtk2dgj5vcfv6p4k.apps.googleusercontent.com";
-const API_KEY = "YOUR_GOOGLE_API_KEY";  // 🔴 Replace with your real API Key
+const API_KEY = "YOUR_GOOGLE_API_KEY";  // Replace with your real API Key
 const SCOPES = "https://www.googleapis.com/auth/drive.readonly";
 
 let tokenClient;
 let gapiInitialized = false;
 
-// ✅ Step 1: Initialize Google API
 function initGoogleAPI() {
     console.log("⏳ Initializing Google API...");
     gapi.load("client:auth2", async () => {
@@ -22,7 +21,7 @@ function initGoogleAPI() {
     });
 }
 
-// ✅ Step 2: Authenticate User
+// ✅ Authenticate User
 document.getElementById("authButton").addEventListener("click", () => {
     if (!tokenClient) {
         tokenClient = google.accounts.oauth2.initTokenClient({
@@ -38,7 +37,7 @@ document.getElementById("authButton").addEventListener("click", () => {
     tokenClient.requestAccessToken();
 });
 
-// ✅ Step 3: Search Google Drive for Excel Files
+// ✅ Search for Excel Files in Google Drive
 document.getElementById("searchButton").addEventListener("click", async () => {
     if (!gapiInitialized) {
         alert("Google API not initialized yet. Please wait a few seconds and try again.");
@@ -54,7 +53,7 @@ document.getElementById("searchButton").addEventListener("click", async () => {
     try {
         console.log("🔎 Searching for Excel files in Google Drive...");
         const response = await gapi.client.drive.files.list({
-            q: "(mimeType='application/vnd.ms-excel' or mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' or mimeType='text/csv')",
+            q: "(mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' or mimeType='application/vnd.ms-excel')",
             fields: "files(id, name, webViewLink)",
             spaces: "drive",
             pageSize: 10,
@@ -72,16 +71,7 @@ document.getElementById("searchButton").addEventListener("click", async () => {
 
         resultsDiv.innerHTML = "<h3>Matching Excel Files:</h3>";
         for (const file of files) {
-            const fileLink = document.createElement("a");
-            fileLink.href = file.webViewLink;
-            fileLink.textContent = file.name;
-            fileLink.target = "_blank";
-            resultsDiv.appendChild(fileLink);
-            resultsDiv.appendChild(document.createElement("br"));
-
             console.log(`📂 Found file: ${file.name} (ID: ${file.id})`);
-
-            // ✅ Step 4: Read the file and search for the term
             await searchInExcelFile(file.id, searchTerm);
         }
     } catch (error) {
@@ -90,22 +80,49 @@ document.getElementById("searchButton").addEventListener("click", async () => {
     }
 });
 
-// ✅ Step 4: Open & Search Inside Each Excel File
+// ✅ Read and Search Inside Each Excel File
 async function searchInExcelFile(fileId, searchTerm) {
     try {
-        console.log(`📖 Opening file ${fileId} to search for "${searchTerm}"...`);
+        console.log(`📖 Downloading file ${fileId}...`);
 
-        // Step 4.1: Download the file content as text
         const response = await gapi.client.drive.files.get({
             fileId: fileId,
             alt: "media",
         });
 
-        // Step 4.2: Extract file content
-        const fileContent = response.body;
-        console.log("📄 File Content Loaded:", fileContent.substring(0, 500)); // Show only first 500 characters
+        const fileContent = response.body;  // This is the raw binary data
+        console.log("📄 File Content Loaded:", fileContent.substring(0, 500)); // Show preview
 
-        // Step 4.3: Search for the term in the file content
-        if (fileContent.includes(searchTerm)) {
-            alert(`✅ Match found in file: ${fileId}`);
-   
+        // Convert file content to a Workbook (Using SheetJS - xlsx.js)
+        const workbook = XLSX.read(fileContent, { type: "binary" });
+        
+        let found = false;
+        let resultHTML = "";
+
+        // Loop through each sheet
+        workbook.SheetNames.forEach(sheetName => {
+            const worksheet = workbook.Sheets[sheetName];
+            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+            // Loop through rows to find matching search term
+            jsonData.forEach((row, index) => {
+                if (row.some(cell => cell && cell.toString().includes(searchTerm))) {
+                    found = true;
+                    resultHTML += `<p>Match found in <b>${sheetName}</b> at row ${index + 1}: ${row.join(" | ")}</p>`;
+                }
+            });
+        });
+
+        // Display the results
+        const resultsDiv = document.getElementById("results");
+        if (found) {
+            resultsDiv.innerHTML += `<h4>✅ Matches found in file: <a href="https://drive.google.com/open?id=${fileId}" target="_blank">${fileId}</a></h4>` + resultHTML;
+        } else {
+            resultsDiv.innerHTML += `<h4>❌ No matches found in file: ${fileId}</h4>`;
+        }
+
+    } catch (error) {
+        console.error(`❌ Error reading file ${fileId}:`, error);
+        alert(`Error reading file: ${fileId}. Check console for details.`);
+    }
+}
