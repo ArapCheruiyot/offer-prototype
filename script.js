@@ -19,7 +19,7 @@ window.gisLoaded = function () {
 async function initializeGapiClient() {
     try {
         await gapi.client.init({
-            apiKey: 'YOUR_API_KEY', // Replace with actual API key
+            apiKey: '743264679221-omplmhe5mj6vo37dbtk2dgj5vcfv6p4k.apps.googleusercontent.com', // Replace with actual API key
             discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
         });
         gapiInited = true;
