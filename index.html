@@ -4,15 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Google Drive Excel Search</title>
-    <script src="https://accounts.google.com/gsi/client" async defer></script>  <!-- ✅ Add GIS Library -->
-    <script src="https://apis.google.com/js/api.js" async defer onload="initGoogleAPI()"></script>
-    <script defer src="script.js"></script>
+    <script src="https://apis.google.com/js/api.js"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
-    <h2>Search Excel Files in Google Drive</h2>
-    <button id="authButton">Authenticate with Google</button>
-    <input type="text" id="searchTerm" placeholder="Enter search term...">
+    <h1>Search Google Drive Excel Files</h1>
+    <button id="authButton">Authenticate</button>
+    <input type="text" id="searchTerm" placeholder="Enter search value">
     <button id="searchButton">Search</button>
     <div id="results"></div>
+    <script src="script.js"></script>
 </body>
 </html>
