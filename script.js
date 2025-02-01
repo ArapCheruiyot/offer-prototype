@@ -14,6 +14,7 @@ function gapiLoaded() {
 
 async function initializeGapiClient() {
   try {
+    console.log('Initializing GAPI client...');
     await gapi.client.init({
       apiKey: API_KEY,
       discoveryDocs: DISCOVERY_DOCS,
@@ -30,11 +31,15 @@ async function initializeGapiClient() {
 function maybeEnableButtons() {
   if (gapiInited) {
     document.getElementById('authButton').disabled = false;
+    console.log('GAPI initialized: Enabling auth button');
+  } else {
+    console.log('GAPI not initialized yet');
   }
 }
 
 // Handle authentication
 async function handleAuthClick() {
+  console.log('Authentication requested...');
   const tokenClient = google.accounts.oauth2.initTokenClient({
     client_id: CLIENT_ID,
     scope: SCOPES,
@@ -43,6 +48,7 @@ async function handleAuthClick() {
         console.error('Authentication error:', resp.error);
         return;
       }
+      console.log('Authentication successful');
       document.getElementById('authButton').style.display = 'none';
       document.getElementById('searchInput').disabled = false;
       document.getElementById('searchButton').disabled = false;
@@ -55,6 +61,7 @@ async function handleAuthClick() {
 // Fetch and read Excel file
 async function fetchExcelFile(fileId) {
   try {
+    console.log(`Fetching file with ID: ${fileId}`);
     const response = await gapi.client.drive.files.get({
       fileId: fileId,
       alt: 'media',
@@ -92,6 +99,7 @@ async function fetchExcelFilesFromDrive() {
   let pageToken = null;
 
   try {
+    console.log('Fetching files from Google Drive...');
     do {
       const response = await gapi.client.drive.files.list({
         q: "mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'",
@@ -106,6 +114,7 @@ async function fetchExcelFilesFromDrive() {
     console.error('Error fetching files from Google Drive:', error);
   }
 
+  console.log('Files fetched:', files);
   return files;
 }
 
@@ -145,3 +154,6 @@ document.getElementById('searchButton').addEventListener('click', async () => {
 
 // Initialize Google APIs
 document.getElementById('authButton').addEventListener('click', handleAuthClick);
+
+// Start Google API Initialization
+gapiLoaded();
