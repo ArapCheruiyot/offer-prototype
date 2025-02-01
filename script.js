@@ -1,170 +1,185 @@
-let uploadedFiles = [];
-let fileData = {};
-let gapiInited = false;
-let gisInited = false;
-let accessToken = null;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer Offer Search</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            padding: 10px;
+            background-color: #f8f8f8;
+            display: flex;
+            justify-content: flex-start; /* Align content to the left */
+            align-items: flex-start; /* Align content to the top */
+        }
+        .container {
+            border: 1px solid #ccc;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            width: 300px; /* Reduced width */
+        }
+        .file-list {
+            margin: 20px 0;
+            padding: 10px;
+            border: 1px dashed #ccc;
+            border-radius: 5px;
+            background-color: #fafafa;
+            max-height: 150px; /* Limit the height */
+            overflow-y: auto; /* Enable scrolling if content overflows */
+        }
+        .file-item {
+            margin: 5px 0;
+        }
+        .result, .no-result {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 5px;
+            word-wrap: break-word; /* Break long words to avoid overflow */
+            overflow: hidden; /* Prevent overflow */
+            white-space: normal; /* Allow text to wrap */
+        }
+        .result {
+            background-color: #e7f4e4;
+            border: 1px solid #d6e9c6;
+        }
+        .no-result {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
 
-// Load Google API Client
-window.gapiLoaded = function () {
-    gapi.load('client', initializeGapiClient);
-};
+<div class="container">
+    <h2>Customer Offer Search</h2>
 
-// Load Google Identity Services (GIS)
-window.gisLoaded = function () {
-    gisInited = true;
-    maybeEnableButtons();
-};
+    <!-- Button to Upload Excel Files -->
+    <input type="file" id="fileInput" accept=".xlsx, .xls" multiple>
+    <button id="uploadButton">Add Files</button>
+    
+    <div class="file-list" id="fileList">
+        <h3>Uploaded Files:</h3>
+    </div>
 
-// Initialize Google API Client
-async function initializeGapiClient() {
-    try {
-        await gapi.client.init({
-            apiKey: '743264679221-omplmhe5mj6vo37dbtk2dgj5vcfv6p4k.apps.googleusercontent.com', // Replace with actual API key
-            discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
-        });
-        gapiInited = true;
-        maybeEnableButtons();
-    } catch (error) {
-        console.error('Error initializing Google API Client:', error);
-    }
-}
+    <!-- Search Box -->
+    <input type="text" id="searchInput" placeholder="Enter customer number">
+    <button id="searchButton">Search</button>
 
-// Enable buttons only when both libraries are ready
-function maybeEnableButtons() {
-    if (gapiInited && gisInited) {
-        document.getElementById('authButton').disabled = false;
-    }
-}
+    <!-- Result Display -->
+    <div id="resultContainer"></div>
 
-// Authenticate user and store access token
-async function authenticate() {
-    if (!window.google || !window.google.accounts) {
-        console.error('Google Identity Services not loaded.');
-        return;
-    }
+    <!-- Delete Button -->
+    <button id="deleteButton">Delete Selected File</button>
+</div>
 
-    const tokenClient = google.accounts.oauth2.initTokenClient({
-        client_id: 'YOUR_CLIENT_ID', // Replace with actual OAuth Client ID
-        scope: 'https://www.googleapis.com/auth/drive.readonly',
-        callback: (response) => {
-            if (response.error) {
-                console.error('Authentication error:', response.error);
-                return;
-            }
-            accessToken = response.access_token;
-            listFiles(); // Proceed to list files after authentication
-        },
-    });
+<script>
+    let uploadedFiles = [];
+    let fileData = {}; // To store the data read from the files
 
-    tokenClient.requestAccessToken({ prompt: 'consent' });
-}
-
-// List files from Google Drive
-async function listFiles() {
-    if (!accessToken) {
-        console.error('Access token not available.');
-        return;
-    }
-
-    try {
-        const response = await gapi.client.drive.files.list({
-            pageSize: 10,
-            fields: "nextPageToken, files(id, name)",
-            q: "mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'"
-        });
-
-        uploadedFiles = response.result.files || [];
-        updateFileList();
-    } catch (error) {
-        console.error('Error fetching files:', error);
-        document.getElementById('resultContainer').innerHTML = '<div class="no-result">Error listing files.</div>';
-    }
-}
-
-// Update the UI with file list
-function updateFileList() {
-    const fileList = document.getElementById('fileList');
-    fileList.innerHTML = '<h3>Files from Google Drive:</h3>';
-
-    if (uploadedFiles.length === 0) {
-        fileList.innerHTML += '<p>No files found.</p>';
-        return;
-    }
-
-    uploadedFiles.forEach((file, index) => {
-        const fileItem = document.createElement('div');
-        fileItem.classList.add('file-item');
-        fileItem.textContent = `${index + 1}: ${file.name}`;
-        fileList.appendChild(fileItem);
-    });
-}
-
-// Read an Excel file from Google Drive
-async function readExcelFile(fileId, fileName) {
-    if (!accessToken) {
-        console.error('Cannot fetch file, no access token available.');
-        return;
-    }
-
-    try {
-        const response = await gapi.client.drive.files.get({
-            fileId,
-            alt: 'media'
-        }, { responseType: 'arraybuffer' });
-
-        const data = new Uint8Array(response.body);
-        const workbook = XLSX.read(data, { type: 'array' });
-
-        fileData[fileName] = workbook.SheetNames.flatMap(sheetName => 
-            XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1 })
-        );
-    } catch (error) {
-        console.error('Error reading file:', error);
-        document.getElementById('resultContainer').innerHTML = '<div class="no-result">Error reading file.</div>';
-    }
-}
-
-// Convert Excel serial date to JavaScript Date
-function excelDateToJSDate(excelDate) {
-    const msPerDay = 86400000;
-    const epoch = new Date(Date.UTC(1970, 0, 1));
-    return new Date(epoch.getTime() + (excelDate - 25569) * msPerDay);
-}
-
-// Search functionality
-document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('searchButton').addEventListener('click', async () => {
-        const customerNumber = document.getElementById('searchInput').value.trim();
-        const resultContainer = document.getElementById('resultContainer');
-        resultContainer.innerHTML = '';
-
-        if (!customerNumber) {
-            resultContainer.innerHTML = '<div class="no-result">Please enter a customer number.</div>';
+    // Handle file uploads
+    document.getElementById('uploadButton').addEventListener('click', () => {
+        const fileInput = document.getElementById('fileInput');
+        const files = fileInput.files;
+        
+        if (files.length === 0) {
+            alert('Please select at least one file.');
             return;
         }
+
+        for (let i = 0; i < files.length; i++) {
+            const fileName = files[i].name;
+            if (!uploadedFiles.includes(fileName)) { // Check for duplicates
+                uploadedFiles.push(fileName);
+                readExcelFile(files[i]); // Read the file
+            } else {
+                alert(File ${fileName} is already uploaded.);
+            }
+        }
+
+        updateFileList();
+    });
+
+    // Update file list display
+    function updateFileList() {
+        const fileList = document.getElementById('fileList');
+        fileList.innerHTML = '<h3>Uploaded Files:</h3>'; // Reset list
+        uploadedFiles.forEach((fileName, index) => {
+            const fileItem = document.createElement('div');
+            fileItem.classList.add('file-item');
+            fileItem.textContent = ${index + 1}: ${fileName};
+            fileList.appendChild(fileItem);
+        });
+    }
+
+    // Read the content of the uploaded Excel file
+    function readExcelFile(file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, {type: 'array'});
+            let allData = [];
+
+            workbook.SheetNames.forEach(sheetName => {
+                const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], {header: 1});
+                allData = allData.concat(rows); // Concatenate data from all sheets
+            });
+
+            // Store the data for search functionality
+            fileData[file.name] = allData;
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    // Function to convert Excel date serial number to JS Date
+    function excelDateToJSDate(excelDate) {
+        const msPerDay = 86400000; // milliseconds in a day
+        const epoch = new Date(Date.UTC(1970, 0, 1)); // 1970-01-01
+        return new Date(epoch.getTime() + (excelDate - 25569) * msPerDay);
+    }
+
+    // Handle search functionality
+    document.getElementById('searchButton').addEventListener('click', () => {
+        const customerNumber = document.getElementById('searchInput').value.trim();
+        const resultContainer = document.getElementById('resultContainer');
+
+        // Reset result display
+        resultContainer.innerHTML = '';
 
         if (uploadedFiles.length === 0) {
             resultContainer.innerHTML = '<div class="no-result">No files uploaded yet.</div>';
             return;
         }
 
+        // Search through all uploaded files
         let found = false;
-        for (const file of uploadedFiles) {
-            await readExcelFile(file.id, file.name);
-            const data = fileData[file.name];
-
+        for (const fileName of uploadedFiles) {
+            const data = fileData[fileName];
             for (const row of data) {
+                // Check if customer number is in the row
                 if (row.some(cell => String(cell).trim() === customerNumber)) {
-                    const formattedRow = row.map(cell => 
-                        typeof cell === 'number' && cell > 25568 ? excelDateToJSDate(cell).toLocaleDateString() : cell
-                    ).join(', ');
+                    // Convert any Excel date serial numbers to date strings
+                    const formattedRow = row.map(cell => {
+                        // Check if the cell is a number and in the expected range for Excel dates
+                        if (typeof cell === 'number' && cell > 25568) {
+                            const date = excelDateToJSDate(cell);
+                            return date.toLocaleDateString(); // Convert to local date string
+                        }
+                        return cell; // Return cell as is if it's not a date
+                    });
 
-                    resultContainer.innerHTML += `<div class="result">Customer ${customerNumber} found in ${file.name}: ${formattedRow}</div>`;
+                    // Display the entire row information
+                    const rowData = formattedRow.map(cell => <span>${cell}</span>).join(', ');
+                    resultContainer.innerHTML += <div class="result">Customer ${customerNumber} found in ${fileName}: ${rowData}</div>;
                     found = true;
-                    break;
+                    break; // Exit the inner loop if found
                 }
             }
-            if (found) break;
+            if (found) break; // Exit the outer loop if found
         }
 
         if (!found) {
@@ -172,6 +187,22 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Handle authentication button
-    document.getElementById('authButton').addEventListener('click', authenticate);
-});
+    // Handle delete functionality
+    document.getElementById('deleteButton').addEventListener('click', () => {
+        const selectedFileIndex = prompt("Enter the number of the file to delete:");
+        const index = parseInt(selectedFileIndex) - 1;
+
+        if (index >= 0 && index < uploadedFiles.length) {
+            const deletedFileName = uploadedFiles[index];
+            uploadedFiles.splice(index, 1);
+            delete fileData[deletedFileName]; // Remove corresponding data
+            updateFileList();
+            alert(${deletedFileName} deleted successfully.);
+        } else {
+            alert('Invalid file number.');
+        }
+    });
+</script>
+
+</body>
+</html>
