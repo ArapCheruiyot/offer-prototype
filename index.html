@@ -11,15 +11,13 @@
     <h1>Excel File Search</h1>
     <button id="authButton">Authenticate with Google Drive</button>
     <input type="text" id="searchInput" placeholder="Enter search value" disabled>
-    <button id="searchButton" disabled>Search</button>
+    <button id="searchButton" disabled>Search All Files</button>
+    <div id="progress"></div>
     <div id="results"></div>
   </div>
-  <!-- Load Google API scripts -->
-  <script src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
-  <script src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
-  <!-- Load SheetJS -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <!-- Load your custom script -->
+  <script src="https://apis.google.com/js/api.js"></script>
+  <script src="https://accounts.google.com/gsi/client"></script>
   <script src="script.js"></script>
 </body>
 </html>
