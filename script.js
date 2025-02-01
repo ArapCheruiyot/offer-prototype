@@ -5,6 +5,7 @@ const DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/drive/v3/r
 const SCOPES = 'https://www.googleapis.com/auth/drive.readonly';
 
 let gapiInited = false;
+let gisInited = false;
 
 // Initialize gapi client
 function gapiLoaded() {
@@ -25,7 +26,7 @@ async function initializeGapiClient() {
   }
 }
 
-// Enable buttons once the API is initialized
+// Enable buttons once the Google API client is ready
 function maybeEnableButtons() {
   if (gapiInited) {
     document.getElementById('authButton').disabled = false;
@@ -115,6 +116,12 @@ document.getElementById('searchButton').addEventListener('click', async () => {
 
   const resultsDiv = document.getElementById('results');
   resultsDiv.innerHTML = 'Searching...';
+
+  // Ensure gapi is initialized before proceeding
+  if (!gapiInited) {
+    resultsDiv.innerHTML = 'Google API client is not initialized. Please try again.';
+    return;
+  }
 
   const files = await fetchExcelFilesFromDrive();
   let found = false;
