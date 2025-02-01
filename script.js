@@ -1,5 +1,5 @@
 // Google Drive API setup
-const CLIENT_ID = 'YOUR_CLIENT_ID'; // Replace with your Google Cloud Client ID
+const CLIENT_ID = '743264679221-omplmhe5mj6vo37dbtk2dgj5vcfv6p4k.apps.googleusercontent.com'; // Replace with your Google Cloud Client ID
 const API_KEY = 'YOUR_API_KEY'; // Replace with your Google Cloud API Key
 const DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"];
 const SCOPES = 'https://www.googleapis.com/auth/drive.readonly';
