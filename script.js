@@ -5,7 +5,6 @@ const DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/drive/v3/r
 const SCOPES = 'https://www.googleapis.com/auth/drive.readonly';
 
 let gapiInited = false;
-let gisInited = false;
 
 // Initialize gapi client
 function gapiLoaded() {
@@ -19,21 +18,16 @@ async function initializeGapiClient() {
       discoveryDocs: DISCOVERY_DOCS,
     });
     gapiInited = true;
+    console.log('GAPI client initialized');
     maybeEnableButtons();
   } catch (error) {
     console.error('Error initializing GAPI client:', error);
   }
 }
 
-// Initialize gis client
-function gisLoaded() {
-  gisInited = true;
-  maybeEnableButtons();
-}
-
-// Enable buttons once both libraries are loaded
+// Enable buttons once the API is initialized
 function maybeEnableButtons() {
-  if (gapiInited && gisInited) {
+  if (gapiInited) {
     document.getElementById('authButton').disabled = false;
   }
 }
@@ -96,16 +90,20 @@ async function fetchExcelFilesFromDrive() {
   let files = [];
   let pageToken = null;
 
-  do {
-    const response = await gapi.client.drive.files.list({
-      q: "mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'",
-      fields: "nextPageToken, files(id, name)",
-      pageToken: pageToken,
-    });
+  try {
+    do {
+      const response = await gapi.client.drive.files.list({
+        q: "mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'",
+        fields: "nextPageToken, files(id, name)",
+        pageToken: pageToken,
+      });
 
-    files = files.concat(response.result.files);
-    pageToken = response.result.nextPageToken;
-  } while (pageToken);
+      files = files.concat(response.result.files);
+      pageToken = response.result.nextPageToken;
+    } while (pageToken);
+  } catch (error) {
+    console.error('Error fetching files from Google Drive:', error);
+  }
 
   return files;
 }
