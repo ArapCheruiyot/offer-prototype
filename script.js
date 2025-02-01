@@ -1,3 +1,4 @@
+// script.js (Updated Version)
 const CLIENT_ID = '743264679221-omplmhe5mj6vo37dbtk2dgj5vcfv6p4k.apps.googleusercontent.com';
 const API_KEY = 'YOUR_API_KEY';
 const DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"];
@@ -6,6 +7,7 @@ const SCOPES = 'https://www.googleapis.com/auth/drive.readonly';
 let gapiInited = false;
 let gisInited = false;
 let searchActive = false;
+let accessToken = null; // Track access token
 
 // ================== Google API Initialization ==================
 function gapiLoaded() {
@@ -22,6 +24,7 @@ async function initializeGapiClient() {
     maybeEnableButtons();
   } catch (error) {
     console.error('GAPI init error:', error);
+    showResult('Failed to initialize Google API', false);
   }
 }
 
@@ -44,8 +47,10 @@ async function handleAuthClick() {
     callback: (resp) => {
       if (resp.error) {
         console.error('Auth error:', resp);
+        showResult('Authentication failed', false);
         return;
       }
+      accessToken = resp.access_token; // Store access token
       document.getElementById('authButton').style.display = 'none';
       document.getElementById('searchInput').disabled = false;
       document.getElementById('searchButton').disabled = false;
@@ -57,29 +62,37 @@ async function handleAuthClick() {
 // ================== File Handling ==================
 async function fetchExcelFile(fileId) {
   try {
-    const response = await gapi.client.request({
-      path: `/drive/v3/files/${fileId}`,
-      method: 'GET',
-      params: { alt: 'media' },
-      responseType: 'arraybuffer'
+    const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`
+      }
     });
-
-    return XLSX.read(new Uint8Array(response.body), { type: 'array' });
+    
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    
+    const arrayBuffer = await response.arrayBuffer();
+    return XLSX.read(arrayBuffer, { type: 'array' });
   } catch (error) {
     console.error('File fetch error:', error);
+    showResult(`Failed to read file: ${error.message}`, false);
     return null;
   }
 }
 
 // ================== Search Logic ==================
-async function searchExcel(workbook, searchValue) {
+function searchExcel(workbook, searchValue) {
   try {
+    const searchString = searchValue.toString().toLowerCase();
+    
     return workbook.SheetNames.some(sheetName => {
       const sheet = workbook.Sheets[sheetName];
       const data = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-      return data.some(row => row.some(cell => 
-        String(cell).includes(searchValue)
-      ));
+      
+      return data.some(row => 
+        row.some(cell => 
+          String(cell).toLowerCase().includes(searchString)
+        )
+      );
     });
   } catch (error) {
     console.error('Search error:', error);
@@ -89,8 +102,11 @@ async function searchExcel(workbook, searchValue) {
 
 // ================== Main Search Function ==================
 async function searchAllFiles(searchValue) {
+  if (!searchValue.trim()) return;
+  
   searchActive = true;
   document.getElementById('results').innerHTML = '';
+  showResult('Starting search...', true);
   
   try {
     let nextPageToken = null;
@@ -112,32 +128,41 @@ async function searchAllFiles(searchValue) {
         
         updateProgress(`Searching: ${file.name}`);
         const workbook = await fetchExcelFile(file.id);
-        if (workbook && await searchExcel(workbook, searchValue)) {
-          showResult(`FOUND in ${file.name}`, true);
-          found = true;
-          break;
+        
+        if (workbook) {
+          if (searchExcel(workbook, searchValue)) {
+            showResult(`✅ Found in: ${file.name}`, true);
+            found = true;
+            break;
+          } else {
+            showResult(`❌ Not found in: ${file.name}`, false);
+          }
         }
       }
     } while (nextPageToken && searchActive && !found);
 
-    if (!found) showResult('Value not found in any files', false);
+    if (!found) showResult('🔍 Value not found in any files', false);
   } catch (error) {
     console.error('Search failed:', error);
-    showResult('Search failed due to error', false);
+    showResult(`❌ Search failed: ${error.message}`, false);
   }
   searchActive = false;
 }
 
 // ================== UI Helpers ==================
 function updateProgress(message) {
-  document.getElementById('progress').textContent = message;
+  const progress = document.getElementById('progress');
+  progress.textContent = message;
+  progress.scrollIntoView({ behavior: 'smooth' });
 }
 
 function showResult(message, isFound) {
+  const resultsDiv = document.getElementById('results');
   const div = document.createElement('div');
   div.className = isFound ? 'found' : 'not-found';
-  div.textContent = message;
-  document.getElementById('results').appendChild(div);
+  div.innerHTML = message;
+  resultsDiv.appendChild(div);
+  div.scrollIntoView({ behavior: 'smooth' });
 }
 
 // ================== Event Listeners ==================
