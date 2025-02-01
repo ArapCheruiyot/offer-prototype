@@ -86,24 +86,50 @@ function searchExcel(workbook, searchValue) {
   return null;
 }
 
+// Fetch all Excel files from Google Drive
+async function fetchExcelFilesFromDrive() {
+  let files = [];
+  let pageToken = null;
+
+  do {
+    const response = await gapi.client.drive.files.list({
+      q: "mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'",
+      fields: "nextPageToken, files(id, name)",
+      pageToken: pageToken,
+    });
+
+    files = files.concat(response.result.files);
+    pageToken = response.result.nextPageToken;
+  } while (pageToken);
+
+  return files;
+}
+
 // Handle search button click
 document.getElementById('searchButton').addEventListener('click', async () => {
   const searchValue = document.getElementById('searchInput').value;
   if (!searchValue) return;
 
-  const fileId = '10fVN1pg_r9pK115213SlHAkV9zQwTMRT'; // Replace with your Excel file ID from Google Drive
-  const workbook = await fetchExcelFile(fileId);
+  const resultsDiv = document.getElementById('results');
+  resultsDiv.innerHTML = 'Searching...';
 
-  if (workbook) {
-    const result = searchExcel(workbook, searchValue);
-    const resultsDiv = document.getElementById('results');
-    if (result) {
-      resultsDiv.innerHTML = `<strong>Found:</strong> ${result.join(', ')}`;
-    } else {
-      resultsDiv.innerHTML = `<strong>Not Found:</strong> ${searchValue}`;
+  const files = await fetchExcelFilesFromDrive();
+  let found = false;
+
+  for (let file of files) {
+    const workbook = await fetchExcelFile(file.id);
+    if (workbook) {
+      const result = searchExcel(workbook, searchValue);
+      if (result) {
+        resultsDiv.innerHTML = `<strong>Found in:</strong> ${file.name} - ${result.join(', ')}`;
+        found = true;
+        break; // Stop searching once found
+      }
     }
-  } else {
-    console.error('Failed to load workbook.');
+  }
+
+  if (!found) {
+    resultsDiv.innerHTML = `<strong>Not Found:</strong> ${searchValue}`;
   }
 });
 
