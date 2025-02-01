@@ -88,6 +88,11 @@ function searchExcel(workbook, searchValue) {
 
 // Fetch all Excel files from Google Drive
 async function fetchExcelFilesFromDrive() {
+  if (!gapiInited) {
+    console.error('Google API client is not initialized');
+    return [];
+  }
+
   let files = [];
   let pageToken = null;
 
