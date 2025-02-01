@@ -7,6 +7,7 @@ const SCOPES = 'https://www.googleapis.com/auth/drive.readonly';
 let gapiInited = false;
 let gisInited = false;
 
+// Initialize gapi client
 function gapiLoaded() {
   gapi.load('client', initializeGapiClient);
 }
@@ -24,17 +25,20 @@ async function initializeGapiClient() {
   }
 }
 
+// Initialize gis client
 function gisLoaded() {
   gisInited = true;
   maybeEnableButtons();
 }
 
+// Enable buttons once both libraries are loaded
 function maybeEnableButtons() {
   if (gapiInited && gisInited) {
     document.getElementById('authButton').disabled = false;
   }
 }
 
+// Handle authentication
 async function handleAuthClick() {
   const tokenClient = google.accounts.oauth2.initTokenClient({
     client_id: CLIENT_ID,
