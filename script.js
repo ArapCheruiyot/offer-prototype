@@ -1,3 +1,6 @@
+let uploadedFiles = []; // To store the list of files
+let fileData = {}; // To store the data read from the files
+
 // Step 1: Initialize Google API
 function gapiLoaded() {
     gapi.load('client', initializeGapiClient);
@@ -15,7 +18,7 @@ async function initializeGapiClient() {
 // Step 3: Handle Google Authentication
 function authenticate() {
     const tokenClient = google.accounts.oauth2.initTokenClient({
-        client_id: '743264679221-omplmhe5mj6vo37dbtk2dgj5vcfv6p4k.apps.googleusercontent.com', // Replace with your OAuth client ID
+        client_id: 'YOUR_CLIENT_ID', // Replace with your OAuth client ID
         scope: 'https://www.googleapis.com/auth/drive.readonly', // Request read-only access to Google Drive
         callback: (response) => {
             if (response.error) {
@@ -23,8 +26,7 @@ function authenticate() {
                 return;
             }
             console.log('Authentication successful!');
-            // Proceed to list files after authentication
-            listFiles();
+            listFiles(); // List files after authentication
         },
     });
     tokenClient.requestAccessToken({ prompt: '' }); // Prompt the user to authenticate
@@ -40,8 +42,8 @@ async function listFiles() {
         });
         const files = response.result.files;
         if (files && files.length > 0) {
-            console.log('Files:', files);
-            alert(`Found ${files.length} files. Check the console for details.`);
+            uploadedFiles = files;
+            displayFiles(files); // Display files in the UI
         } else {
             console.log('No files found.');
             alert('No files found.');
@@ -52,10 +54,22 @@ async function listFiles() {
     }
 }
 
-// Step 5: Add event listener to the authentication button
+// Step 5: Display files in the UI
+function displayFiles(files) {
+    const filesContainer = document.getElementById('files');
+    filesContainer.innerHTML = ''; // Clear previous content
+    files.forEach((file, index) => {
+        const fileItem = document.createElement('div');
+        fileItem.classList.add('file-item');
+        fileItem.textContent = `${index + 1}: ${file.name}`;
+        filesContainer.appendChild(fileItem);
+    });
+}
+
+// Step 6: Add event listener to the authentication button
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('authButton').addEventListener('click', authenticate);
 });
 
-// Step 6: Load the Google API script
+// Step 7: Load the Google API script
 window.gapiLoaded = gapiLoaded;
