@@ -6,7 +6,7 @@ function gapiLoaded() {
 // Step 2: Initialize the Google API client
 async function initializeGapiClient() {
     await gapi.client.init({
-        'apiKey': '743264679221-omplmhe5mj6vo37dbtk2dgj5vcfv6p4k.apps.googleusercontent.com', // Replace with your API key
+        'apiKey': 'YOUR_API_KEY', // Replace with your API key
         'discoveryDocs': ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
     });
     console.log('Google API client initialized.');
@@ -15,7 +15,7 @@ async function initializeGapiClient() {
 // Step 3: Handle Google Authentication
 function authenticate() {
     const tokenClient = google.accounts.oauth2.initTokenClient({
-        client_id: 'YOUR_CLIENT_ID', // Replace with your OAuth client ID
+        client_id: '743264679221-omplmhe5mj6vo37dbtk2dgj5vcfv6p4k.apps.googleusercontent.com', // Replace with your OAuth client ID
         scope: 'https://www.googleapis.com/auth/drive.readonly', // Request read-only access to Google Drive
         callback: (response) => {
             if (response.error) {
