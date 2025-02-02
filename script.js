@@ -1,6 +1,13 @@
 let uploadedFiles = []; // To store the list of files
 let fileData = {}; // To store the data read from the files
 
+// Hide elements initially
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('authButton').addEventListener('click', authenticate);
+    document.getElementById('fileList').style.display = 'none'; // Hide file list
+    document.querySelector('.search-box').style.display = 'none'; // Hide search box
+});
+
 // Step 1: Initialize Google API
 function gapiLoaded() {
     gapi.load('client', initializeGapiClient);
@@ -26,13 +33,20 @@ function authenticate() {
                 return;
             }
             console.log('Authentication successful!');
+            showUI(); // Show hidden UI elements
             listFiles(); // List files after authentication
         },
     });
     tokenClient.requestAccessToken({ prompt: '' }); // Prompt the user to authenticate
 }
 
-// Step 4: List files from Google Drive
+// Step 4: Show UI elements after authentication
+function showUI() {
+    document.getElementById('fileList').style.display = 'block'; // Show file list
+    document.querySelector('.search-box').style.display = 'block'; // Show search box
+}
+
+// Step 5: List files from Google Drive
 async function listFiles() {
     try {
         const response = await gapi.client.drive.files.list({
@@ -54,7 +68,7 @@ async function listFiles() {
     }
 }
 
-// Step 5: Display files in the UI
+// Step 6: Display files in the UI
 function displayFiles(files) {
     const filesContainer = document.getElementById('files');
     filesContainer.innerHTML = ''; // Clear previous content
@@ -65,11 +79,6 @@ function displayFiles(files) {
         filesContainer.appendChild(fileItem);
     });
 }
-
-// Step 6: Add event listener to the authentication button
-document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('authButton').addEventListener('click', authenticate);
-});
 
 // Step 7: Load the Google API script
 window.gapiLoaded = gapiLoaded;
