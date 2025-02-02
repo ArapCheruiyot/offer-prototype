@@ -1,23 +1,46 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Excel Search from Google Drive</title>
-  <link rel="stylesheet" href="styles.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Drive Search</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            padding: 10px;
+            background-color: #f8f8f8;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            flex-direction: column;
+        }
+        .container {
+            border: 1px solid #ccc;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            width: 300px;
+            text-align: center;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+    </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Excel File Search</h1>
-    <button id="authButton">Authenticate with Google Drive</button>
-    <input type="text" id="searchInput" placeholder="Enter search value" disabled>
-    <button id="searchButton" disabled>Search All Files</button>
-    <div id="progress"></div>
-    <div id="results"></div>
-  </div>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <script src="https://apis.google.com/js/api.js"></script>
-  <script src="https://accounts.google.com/gsi/client"></script>
-  <script src="script.js"></script>
+    <div class="container">
+        <h2>Google Drive Search</h2>
+        <button id="authButton">Authenticate with Google</button>
+    </div>
+
+    <!-- Load Google API and Identity Services -->
+    <script src="https://apis.google.com/js/api.js"></script>
+    <script src="https://accounts.google.com/gsi/client"></script>
+    <script src="script.js"></script>
 </body>
 </html>
