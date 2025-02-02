@@ -13,7 +13,6 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
             flex-direction: column;
         }
         .container {
@@ -22,13 +21,30 @@
             background-color: #fff;
             border-radius: 5px;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            width: 300px;
+            width: 400px;
             text-align: center;
         }
         button {
             padding: 10px 20px;
             font-size: 16px;
             cursor: pointer;
+            margin: 10px;
+        }
+        .file-list {
+            margin-top: 20px;
+            text-align: left;
+        }
+        .file-item {
+            padding: 5px;
+            border-bottom: 1px solid #ccc;
+        }
+        .search-box {
+            margin-top: 20px;
+        }
+        input[type="text"] {
+            padding: 10px;
+            width: 80%;
+            font-size: 16px;
         }
     </style>
 </head>
@@ -36,6 +52,21 @@
     <div class="container">
         <h2>Google Drive Search</h2>
         <button id="authButton">Authenticate with Google</button>
+
+        <!-- File List -->
+        <div class="file-list" id="fileList">
+            <h3>Files from Google Drive:</h3>
+            <div id="files"></div>
+        </div>
+
+        <!-- Search Box -->
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="Enter customer number">
+            <button id="searchButton">Search</button>
+        </div>
+
+        <!-- Result Display -->
+        <div id="resultContainer"></div>
     </div>
 
     <!-- Load Google API and Identity Services -->
