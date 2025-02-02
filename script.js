@@ -6,7 +6,7 @@ function gapiLoaded() {
 // Step 2: Initialize the Google API client
 async function initializeGapiClient() {
     await gapi.client.init({
-        'apiKey': 'YOUR_API_KEY', // Replace with your API key
+        'apiKey': '743264679221-omplmhe5mj6vo37dbtk2dgj5vcfv6p4k.apps.googleusercontent.com', // Replace with your API key
         'discoveryDocs': ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
     });
     console.log('Google API client initialized.');
