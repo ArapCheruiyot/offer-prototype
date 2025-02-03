@@ -3,75 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Google Drive Customer Search</title>
-    <script src="https://apis.google.com/js/api.js"></script>
-    <script src="https://accounts.google.com/gsi/client"></script>
+    <title>Google Drive Offer Search</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-            padding: 10px;
-            background-color: #f8f8f8;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            flex-direction: column;
-        }
-        .container {
-            border: 1px solid #ccc;
-            padding: 20px;
-            background-color: #fff;
-            border-radius: 5px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            width: 400px;
-            text-align: center;
-        }
-        button {
-            padding: 10px 20px;
-            font-size: 16px;
-            cursor: pointer;
-            margin: 10px;
-        }
-        .file-list {
-            margin-top: 20px;
-            text-align: left;
-            max-height: 200px;
-            overflow-y: auto;
-            border: 1px solid #ccc;
-            padding: 10px;
-            background-color: #fafafa;
-            border-radius: 5px;
-        }
-        .result, .no-result {
-            margin-top: 10px;
-            padding: 10px;
-            border-radius: 5px;
-            word-wrap: break-word;
-        }
-        .result {
-            background-color: #e7f4e4;
-            border: 1px solid #d6e9c6;
-        }
-        .no-result {
-            background-color: #f8d7da;
-            border: 1px solid #f5c6cb;
-        }
-    </style>
+    <script src="https://accounts.google.com/gsi/client"></script>
+    <script src="https://apis.google.com/js/api.js"></script>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="container">
-        <h2>Google Drive Customer Search</h2>
-
-        <button id="authButton">Authenticate with Google</button>
-        <button id="fetchFilesButton" disabled>Fetch Files from Google Drive</button>
-
-        <div class="file-list" id="fileList"></div>
+        <h2>Customer Offer Search</h2>
+        <button id="authButton">Authenticate Google Drive</button>
+        
+        <div class="file-list hidden" id="fileList">
+            <h3>Google Drive Files:</h3>
+        </div>
 
         <input type="text" id="searchInput" placeholder="Enter customer number">
         <button id="searchButton">Search</button>
-
+        
         <div id="resultContainer"></div>
+        <button id="refreshButton" class="hidden">Refresh Files</button>
     </div>
 
     <script src="script.js"></script>
