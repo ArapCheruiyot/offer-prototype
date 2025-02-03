@@ -61,7 +61,7 @@ function updateFileList() {
     });
 }
 
-// Excel File Processing
+// Excel File Processing (Updated)
 async function processDriveFile(fileId, fileName) {
     try {
         console.time(`Processed ${fileName}`);
@@ -75,31 +75,35 @@ async function processDriveFile(fileId, fileName) {
             type: 'array',
             cellText: false,
             cellDates: true,
-            dateNF: 'yyyy-mm-dd',
-            rawNumbers: false
+            dense: true
         });
 
         const allData = [];
         workbook.SheetNames.forEach(sheetName => {
             const worksheet = workbook.Sheets[sheetName];
-            const rows = XLSX.utils.sheet_to_json(worksheet, { 
-                header: 1,
-                defval: '',
-                raw: false
-            });
+            if(!worksheet['!ref']) return;
             
-            allData.push(...rows.filter(row => row.some(cell => cell !== '')));
+            const range = XLSX.utils.decode_range(worksheet['!ref']);
+            for(let rowNum = range.s.r; rowNum <= range.e.r; rowNum++) {
+                const row = [];
+                for(let colNum = range.s.c; colNum <= range.e.c; colNum++) {
+                    const cell = worksheet[XLSX.utils.encode_cell({r: rowNum, c: colNum})];
+                    row.push(cell ? cell.v : '');
+                }
+                allData.push(row);
+            }
         });
 
-        fileData[fileName] = allData;
+        fileData[fileName] = allData.filter(row => row.some(cell => cell !== ''));
         console.timeEnd(`Processed ${fileName}`);
-        console.log('Processed data sample:', JSON.parse(JSON.stringify(allData.slice(0, 3))));
+        console.log('Processed data sample:', JSON.parse(JSON.stringify(allData.slice(0, 5))));
     } catch (error) {
         console.error(`Error processing ${fileName}:`, error);
         fileData[fileName] = [];
     }
 }
 
+// Search Functionality (Optimized)
 async function executeSearch() {
     const searchTerm = document.getElementById('searchInput').value.trim();
     const resultContainer = document.getElementById('resultContainer');
@@ -112,55 +116,34 @@ async function executeSearch() {
 
     try {
         let found = false;
-        const normalizedSearch = searchTerm.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-        console.log('Ultimate search analysis:', {
-            original: searchTerm,
-            normalized: normalizedSearch,
-            codes: Array.from(normalizedSearch).map(c => c.charCodeAt(0)),
-            length: normalizedSearch.length
-        });
+        const cleanSearch = searchTerm.replace(/[^0-9]/g, '');
+        const searchVariants = new Set([
+            cleanSearch,
+            `'${cleanSearch}'`, // Excel number-as-text format
+            BigInt(cleanSearch).toString() // Handle large integers
+        ]);
+
+        console.log('Search variants:', [...searchVariants]);
 
         for (const file of uploadedFiles) {
-            console.groupCollapsed(`PROCESSING ${file.name}`);
+            console.groupCollapsed(`Processing ${file.name}`);
             await processDriveFile(file.id, file.name);
             const sheetData = fileData[file.name] || [];
 
             for (const [rowIndex, row] of sheetData.entries()) {
-                if (!Array.isArray(row)) continue;
-
-                const matchAnalysis = row.map((cell, cellIndex) => {
-                    // Deep inspection
-                    const rawValue = cell;
-                    const type = typeof cell;
-                    const strValue = String(cell).trim();
-                    const normalizedCell = strValue.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-                    
-                    return {
-                        cellIndex,
-                        rawValue,
-                        type,
-                        strValue,
-                        normalizedCell,
-                        codes: Array.from(normalizedCell).map(c => c.charCodeAt(0)),
-                        isExactMatch: normalizedCell === normalizedSearch,
-                        isNumericMatch: !isNaN(Number(normalizedCell)) && 
-                                      !isNaN(Number(normalizedSearch)) && 
-                                      Number(normalizedCell) === Number(normalizedSearch)
-                    };
+                const rowValues = row.map(cell => {
+                    if (typeof cell === 'number' && cell > 25568) {
+                        return new Date((cell - 25569) * 86400000).toLocaleDateString();
+                    }
+                    return String(cell).replace(/[^0-9]/g, '');
                 });
 
-                console.log(`Row ${rowIndex + 1} analysis:`, matchAnalysis);
-                
-                if (matchAnalysis.some(cell => cell.isExactMatch || cell.isNumericMatch)) {
-                    const matches = matchAnalysis.filter(cell => cell.isExactMatch || cell.isNumericMatch);
-                    console.log('MATCH FOUND:', matches);
-                    
+                if (rowValues.some(value => searchVariants.has(value))) {
                     const formattedRow = row.map(cell => formatCellValue(cell));
                     resultContainer.innerHTML += `
                         <div class="result">
-                            Match found in ${file.name} (Row ${rowIndex + 1}):<br>
-                            ${formattedRow.join(' | ')}<br>
-                            Match Type: ${matches.map(m => m.isExactMatch ? 'Exact' : 'Numeric').join(', ')}
+                            Match found in ${file.name} (Row ${rowIndex + 1}): 
+                            ${formattedRow.join(' | ')}
                         </div>`;
                     found = true;
                     break;
@@ -172,12 +155,10 @@ async function executeSearch() {
         }
 
         if (!found) {
-            console.warn('DEEP ANALYSIS: No matches found');
             resultContainer.innerHTML = `
                 <div class="no-result">
                     No matches found for "${searchTerm}"<br>
-                    Normalized: "${normalizedSearch}"<br>
-                    Character codes: [${Array.from(normalizedSearch).map(c => c.charCodeAt(0)).join(', ')}]
+                    Search variants tried: ${[...searchVariants].join(', ')}
                 </div>`;
         }
     } catch (error) {
@@ -185,32 +166,26 @@ async function executeSearch() {
         resultContainer.innerHTML = '<div class="no-result">Search failed - Check console</div>';
     }
 }
-// Enhanced Cell Formatting
+
+// Cell Formatting
 function formatCellValue(cell) {
     try {
-        // Handle Excel date serial numbers
-        if (typeof cell === 'number' && cell > 25568 && cell < 2958466) {
-            const date = new Date((cell - 25569) * 86400000);
-            return isNaN(date) ? cell : date.toLocaleDateString();
-        }
-        
         // Handle numeric values
         const numericValue = Number(cell);
         if (!isNaN(numericValue)) {
             return numericValue.toLocaleString();
         }
         
-        // Handle boolean values
-        if (typeof cell === 'boolean') {
-            return cell ? 'Yes' : 'No';
+        // Handle dates
+        if (cell instanceof Date) {
+            return cell.toLocaleDateString();
         }
         
     } catch (error) {
         console.warn('Formatting error:', error);
     }
     
-    // Default string handling
-    return String(cell).trim().replace(/[\s\u00A0]+/g, ' ');
+    return String(cell).trim();
 }
 
 // Initialization
