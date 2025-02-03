@@ -42,8 +42,12 @@ async function loadDriveFiles() {
             fields: 'files(id,name)',
             orderBy: 'name'
         });
-
+        
         uploadedFiles = response.result.files || [];
+        // Process each file immediately after loading the list
+        for (const file of uploadedFiles) {
+            await processDriveFile(file.id, file.name);
+        }
         updateFileList();
         document.getElementById('fileList').classList.remove('hidden');
     } catch (error) {
@@ -58,59 +62,53 @@ function updateFileList() {
         const fileItem = document.createElement('div');
         fileItem.className = 'file-item';
         fileItem.textContent = `${index + 1}: ${file.name}`;
-        fileItem.addEventListener('click', () => processDriveFile(file.id, file.name)); // Added click handler for processing file
         fileList.appendChild(fileItem);
     });
 }
 
-// Excel File Processing (Updated)
+// Excel File Processing (Corrected Date Handling)
 async function processDriveFile(fileId, fileName) {
     try {
-        console.time(`Processed ${fileName}`);
         const response = await gapi.client.drive.files.get({
             fileId: fileId,
             alt: 'media'
         }, { responseType: 'arraybuffer' });
 
         const data = new Uint8Array(response.body);
-        const workbook = XLSX.read(data, { 
-            type: 'array',
-            cellText: false,
-            cellDates: true,
-            dense: true
-        });
-
+        const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+        
         const allData = [];
         workbook.SheetNames.forEach(sheetName => {
             const worksheet = workbook.Sheets[sheetName];
-            if (!worksheet['!ref']) return;
-
-            const range = XLSX.utils.decode_range(worksheet['!ref']);
-            for (let rowNum = range.s.r; rowNum <= range.e.r; rowNum++) {
-                const row = [];
-                for (let colNum = range.s.c; colNum <= range.e.c; colNum++) {
-                    const cell = worksheet[XLSX.utils.encode_cell({r: rowNum, c: colNum})];
-                    row.push(cell ? cell.v : '');
-                }
-                allData.push(row);
-            }
+            const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+            allData.push(...rows);
         });
 
         fileData[fileName] = allData.filter(row => row.some(cell => cell !== ''));
-        console.timeEnd(`Processed ${fileName}`);
-        console.log('Raw data from Excel:', JSON.parse(JSON.stringify(allData.slice(0, 5)))); // Debugging output
+        console.log(`Processed ${fileName} data:`, fileData[fileName]);
     } catch (error) {
         console.error(`Error processing ${fileName}:`, error);
         fileData[fileName] = [];
     }
 }
 
-// Search Functionality (Optimized)
+// Search Functionality (Using Preprocessed Data)
+function formatCellValue(cell) {
+    if (typeof cell === 'number') {
+        // Check if it's a valid Excel date
+        const jsDate = new Date((cell - 25569) * 86400000);
+        if (!isNaN(jsDate.getTime())) {
+            return jsDate.toLocaleDateString();
+        }
+    }
+    return String(cell).trim();
+}
+
 async function executeSearch() {
     const searchTerm = document.getElementById('searchInput').value.trim();
     const resultContainer = document.getElementById('resultContainer');
     resultContainer.innerHTML = '';
-
+    
     if (!searchTerm) {
         resultContainer.innerHTML = '<div class="no-result">Please enter a search term</div>';
         return;
@@ -121,33 +119,22 @@ async function executeSearch() {
         const cleanSearch = searchTerm.replace(/[^0-9]/g, '');
         const searchVariants = new Set([
             cleanSearch,
-            `'${cleanSearch}'`,
-            BigInt(cleanSearch).toString(),
+            `'${cleanSearch}'`, // Excel might store numbers as text with leading '
             searchTerm
         ]);
 
-        console.log(`Searching for: ${searchTerm}`);
-        console.log('Search variants:', [...searchVariants]);
+        console.log(`Searching for variants:`, [...searchVariants]);
 
         for (const file of uploadedFiles) {
-            console.groupCollapsed(`Processing ${file.name}`);
-            await processDriveFile(file.id, file.name);
             const sheetData = fileData[file.name] || [];
+            console.log(`Searching in ${file.name} (${sheetData.length} rows)`);
 
             for (const [rowIndex, row] of sheetData.entries()) {
-                const rowValues = row.map(cell => {
-                    if (typeof cell === 'number' && cell > 25568) {
-                        return new Date((cell - 25569) * 86400000).toLocaleDateString();
-                    }
-                    return String(cell).trim();
-                });
-
-                console.log(`Comparing against:`, rowValues);
-
+                const rowValues = row.map(cell => formatCellValue(cell));
                 if (rowValues.some(value => searchVariants.has(value))) {
                     const formattedRow = row.map(cell => formatCellValue(cell));
-                    resultContainer.innerHTML += `
-                        <div class="result">
+                    resultContainer.innerHTML += 
+                        `<div class="result">
                             Match found in ${file.name} (Row ${rowIndex + 1}): 
                             ${formattedRow.join(' | ')}
                         </div>`;
@@ -155,13 +142,12 @@ async function executeSearch() {
                     break;
                 }
             }
-            console.groupEnd();
             if (found) break;
         }
 
         if (!found) {
-            resultContainer.innerHTML = `
-                <div class="no-result">
+            resultContainer.innerHTML = 
+                `<div class="no-result">
                     No matches found for "${searchTerm}"<br>
                     Search variants tried: ${[...searchVariants].join(', ')}
                 </div>`;
@@ -172,19 +158,11 @@ async function executeSearch() {
     }
 }
 
-// Helper function to format cell values (for better readability in the result)
-function formatCellValue(cell) {
-    if (cell instanceof Date) {
-        return cell.toLocaleDateString();
-    }
-    return String(cell).trim();
-}
-
 // Initialization
 document.addEventListener('DOMContentLoaded', () => {
     gisInited = true;
     gapi.load('client', initializeGapiClient);
-
+    
     document.getElementById('authButton').addEventListener('click', handleAuthClick);
     document.getElementById('searchButton').addEventListener('click', executeSearch);
     document.getElementById('refreshButton').addEventListener('click', loadDriveFiles);
