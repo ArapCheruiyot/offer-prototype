@@ -1,19 +1,33 @@
 let uploadedFiles = []; // To store the list of files
 let fileData = {}; // To store the data read from the files
+let tokenClient; // Store the token client for re-use
 
-// Step 1: Initialize Google API
+// Step 1: Ensure Google API is Loaded
+window.onload = function () {
+    if (typeof gapi !== 'undefined') {
+        console.log("Google API script found, initializing...");
+        gapiLoaded();
+    } else {
+        console.error("Google API script not found!");
+        alert("Failed to load Google API. Refresh the page and try again.");
+    }
+};
+
+// Step 2: Google API Load Handler
 function gapiLoaded() {
     gapi.load('client', initializeGapiClient);
 }
 
-// Step 2: Initialize the Google API client
+// Step 3: Initialize Google API Client
 async function initializeGapiClient() {
     try {
         await gapi.client.init({
-            'apiKey': 'YOUR_API_KEY', // Replace with your API key
-            'discoveryDocs': ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
+            apiKey: 'YOUR_API_KEY', // Replace with your API key
+            discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
         });
-        await gapi.client.load('drive', 'v3'); // Ensure Drive API is loaded
+
+        // Ensure Drive API is loaded before proceeding
+        await gapi.client.load('drive', 'v3');
         console.log('Google API client initialized.');
     } catch (error) {
         console.error('Error initializing Google API client:', error);
@@ -21,44 +35,49 @@ async function initializeGapiClient() {
     }
 }
 
-// Step 3: Handle Google Authentication
+// Step 4: Handle Google Authentication
 function authenticate() {
-    if (!gapi.client) {
+    if (!gapi.client || !gapi.client.drive) {
+        console.error("Google API client is not ready yet.");
         alert('Google API not loaded yet. Try again.');
         return;
     }
 
-    const tokenClient = google.accounts.oauth2.initTokenClient({
-        client_id: '743264679221-omplmhe5mj6vo37dbtk2dgj5vcfv6p4k.apps.googleusercontent.com', // Replace with your OAuth client ID
-        scope: 'https://www.googleapis.com/auth/drive.readonly',
-        callback: (response) => {
-            if (response.error) {
-                console.error('Authentication error:', response.error);
-                alert('Authentication failed.');
-                return;
-            }
-            console.log('Authentication successful!');
-            showUI();
-            listFiles();
-        },
-    });
+    if (!tokenClient) {
+        tokenClient = google.accounts.oauth2.initTokenClient({
+            client_id: '743264679221-omplmhe5mj6vo37dbtk2dgj5vcfv6p4k.apps.googleusercontent.com', // Replace with your OAuth client ID
+            scope: 'https://www.googleapis.com/auth/drive.readonly',
+            callback: (response) => {
+                if (response.error) {
+                    console.error('Authentication error:', response.error);
+                    alert('Authentication failed.');
+                    return;
+                }
+                console.log('Authentication successful!');
+                showUI();
+                listFiles();
+            },
+        });
+    }
+
     tokenClient.requestAccessToken({ prompt: '' });
 }
 
-// Step 4: Show the file list and search box
+// Step 5: Show UI after authentication
 function showUI() {
     document.getElementById('fileList').classList.remove('hidden');
     document.getElementById('searchBox').classList.remove('hidden');
 }
 
-// Step 5: List files from Google Drive
+// Step 6: List files from Google Drive
 async function listFiles() {
     try {
         const response = await gapi.client.drive.files.list({
-            'pageSize': 10,
-            'fields': "nextPageToken, files(id, name)",
-            'q': "mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'"
+            pageSize: 10,
+            fields: "nextPageToken, files(id, name)",
+            q: "mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'"
         });
+
         const files = response.result.files;
         if (files && files.length > 0) {
             uploadedFiles = files;
@@ -73,7 +92,7 @@ async function listFiles() {
     }
 }
 
-// Step 6: Display files in the UI
+// Step 7: Display files in UI
 function displayFiles(files) {
     const filesContainer = document.getElementById('files');
     filesContainer.innerHTML = '';
@@ -85,14 +104,14 @@ function displayFiles(files) {
     });
 }
 
-// Step 7: Read an Excel file from Google Drive
+// Step 8: Read an Excel file from Google Drive
 async function readExcelFile(fileId, fileName) {
     if (fileData[fileName]) return; // Avoid redundant API calls
 
     try {
         const response = await gapi.client.drive.files.get({
-            'fileId': fileId,
-            'alt': 'media'
+            fileId: fileId,
+            alt: 'media'
         }, { responseType: 'arraybuffer' });
 
         const data = new Uint8Array(response.body);
@@ -111,7 +130,7 @@ async function readExcelFile(fileId, fileName) {
     }
 }
 
-// Step 8: Handle search functionality
+// Step 9: Search for Customer Number
 async function searchFiles() {
     const customerNumber = document.getElementById('searchInput').value.trim();
     const resultContainer = document.getElementById('resultContainer');
@@ -159,18 +178,18 @@ async function searchFiles() {
     }
 }
 
-// Step 9: Convert Excel date serial number to JS Date
+// Step 10: Convert Excel Date Serial to JS Date
 function excelDateToJSDate(excelDate) {
     const msPerDay = 86400000;
     const epoch = new Date(Date.UTC(1970, 0, 1));
     return new Date(epoch.getTime() + (excelDate - 25569) * msPerDay);
 }
 
-// Step 10: Add event listeners
+// Step 11: Add Event Listeners
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('authButton').addEventListener('click', authenticate);
     document.getElementById('searchButton').addEventListener('click', searchFiles);
 });
 
-// Step 11: Load the Google API script
+// Step 12: Ensure `gapiLoaded` is globally available
 window.gapiLoaded = gapiLoaded;
