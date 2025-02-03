@@ -4,19 +4,20 @@ let gapiInited = false;
 let gisInited = false;
 
 // Google Drive API Initialization
-function initializeGapiClient() {
-    return gapi.client.init({})
-        .then(() => gapi.client.load('https://content.googleapis.com/discovery/v1/apis/drive/v3/rest'))
-        .then(() => {
-            gapiInited = true;
-            toggleAuthButton();
-            console.log('Google Drive API initialized');
-        });
+async function initializeGapiClient() {
+    try {
+        await gapi.client.init({});
+        await gapi.client.load('https://content.googleapis.com/discovery/v1/apis/drive/v3/rest');
+        gapiInited = true;
+        toggleAuthButton();
+        console.log('Google Drive API initialized');
+    } catch (error) {
+        console.error('Error initializing Google Drive API:', error);
+    }
 }
 
 function toggleAuthButton() {
-    const authBtn = document.getElementById('authButton');
-    authBtn.disabled = !(gapiInited && gisInited);
+    document.getElementById('authButton').disabled = !(gapiInited && gisInited);
 }
 
 // Authentication Flow
@@ -42,7 +43,7 @@ async function loadDriveFiles() {
             orderBy: 'name'
         });
         
-        uploadedFiles = response.result.files;
+        uploadedFiles = response.result.files || [];
         updateFileList();
         document.getElementById('fileList').classList.remove('hidden');
     } catch (error) {
@@ -81,12 +82,12 @@ async function processDriveFile(fileId, fileName) {
         const allData = [];
         workbook.SheetNames.forEach(sheetName => {
             const worksheet = workbook.Sheets[sheetName];
-            if(!worksheet['!ref']) return;
+            if (!worksheet['!ref']) return;
             
             const range = XLSX.utils.decode_range(worksheet['!ref']);
-            for(let rowNum = range.s.r; rowNum <= range.e.r; rowNum++) {
+            for (let rowNum = range.s.r; rowNum <= range.e.r; rowNum++) {
                 const row = [];
-                for(let colNum = range.s.c; colNum <= range.e.c; colNum++) {
+                for (let colNum = range.s.c; colNum <= range.e.c; colNum++) {
                     const cell = worksheet[XLSX.utils.encode_cell({r: rowNum, c: colNum})];
                     row.push(cell ? cell.v : '');
                 }
@@ -96,7 +97,7 @@ async function processDriveFile(fileId, fileName) {
 
         fileData[fileName] = allData.filter(row => row.some(cell => cell !== ''));
         console.timeEnd(`Processed ${fileName}`);
-        console.log('Raw data from Excel:', JSON.parse(JSON.stringify(allData.slice(0, 5)))); // Added for debugging
+        console.log('Raw data from Excel:', JSON.parse(JSON.stringify(allData.slice(0, 5)))); // Debugging output
     } catch (error) {
         console.error(`Error processing ${fileName}:`, error);
         fileData[fileName] = [];
@@ -119,9 +120,9 @@ async function executeSearch() {
         const cleanSearch = searchTerm.replace(/[^0-9]/g, '');
         const searchVariants = new Set([
             cleanSearch,
-            `'${cleanSearch}'`, // Excel number-as-text format
-            BigInt(cleanSearch).toString(), // Handle large integers
-            searchTerm // Keep original input for safety
+            `'${cleanSearch}'`,
+            BigInt(cleanSearch).toString(),
+            searchTerm
         ]);
 
         console.log(`Searching for: ${searchTerm}`);
@@ -135,9 +136,9 @@ async function executeSearch() {
             for (const [rowIndex, row] of sheetData.entries()) {
                 const rowValues = row.map(cell => {
                     if (typeof cell === 'number' && cell > 25568) {
-                        return new Date((cell - 25569) * 86400000).toLocaleDateString(); // Convert Excel date
+                        return new Date((cell - 25569) * 86400000).toLocaleDateString();
                     }
-                    return String(cell).trim(); // Ensure all values are treated as strings
+                    return String(cell).trim();
                 });
 
                 console.log(`Comparing against:`, rowValues);
@@ -153,7 +154,6 @@ async function executeSearch() {
                     break;
                 }
             }
-            
             console.groupEnd();
             if (found) break;
         }
@@ -169,27 +169,6 @@ async function executeSearch() {
         console.error('Search error:', error);
         resultContainer.innerHTML = '<div class="no-result">Search failed - Check console</div>';
     }
-}
-
-// Cell Formatting
-function formatCellValue(cell) {
-    try {
-        // Handle numeric values
-        const numericValue = Number(cell);
-        if (!isNaN(numericValue)) {
-            return numericValue.toLocaleString();
-        }
-        
-        // Handle dates
-        if (cell instanceof Date) {
-            return cell.toLocaleDateString();
-        }
-        
-    } catch (error) {
-        console.warn('Formatting error:', error);
-    }
-    
-    return String(cell).trim();
 }
 
 // Initialization
