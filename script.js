@@ -44,7 +44,7 @@ function showUI() {
   document.getElementById('searchBox').classList.remove('hidden');
 }
 
-// List files from Google Drive
+// List files from Google Drive based on search query
 async function listFiles(query = "") {
   try {
     const response = await gapi.client.drive.files.list({
@@ -61,12 +61,16 @@ async function listFiles(query = "") {
 
 // Function to search files based on the entered query
 function searchFiles() {
-  const query = document.getElementById('searchBox').value; // Get the search query
-  if (query) {
-    listFiles(query); // Pass the query to listFiles
-  } else {
+  const searchTerm = document.getElementById('searchInput').value.trim(); // Get the search term from the input box
+
+  // Ensure the search term is not empty
+  if (!searchTerm) {
     alert('Please enter a search term');
+    return;
   }
+
+  // Pass the search term to listFiles
+  listFiles(searchTerm);
 }
 
 // Display files in the UI
