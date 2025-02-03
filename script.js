@@ -1,91 +1,107 @@
-const CLIENT_ID = "743264679221-omplmhe5mj6vo37dbtk2dgj5vcfv6p4k.apps.googleusercontent.com"; // Replace with your Google Client ID
-const API_KEY = "YOUR_GOOGLE_API_KEY"; // Replace with your API Key
-const DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"];
-const SCOPES = "https://www.googleapis.com/auth/drive.readonly";
+let uploadedFiles = [];
+let fileData = {};
+let gapiInited = false;
+let gisInited = false;
 
-let fileData = {}; // Store data from files
-let uploadedFiles = []; // Store file names
+// Google Drive API initialization
+function initializeGapiClient() {
+    return gapi.client.init({})
+        .then(() => gapi.client.load('https://content.googleapis.com/discovery/v1/apis/drive/v3/rest'))
+        .then(() => {
+            gapiInited = true;
+            maybeEnableButtons();
+        });
+}
 
-// Authenticate user
-document.getElementById("authButton").addEventListener("click", () => {
-    gapi.load("client:auth2", () => {
-        gapi.client.init({ apiKey: API_KEY, clientId: CLIENT_ID, discoveryDocs: DISCOVERY_DOCS, scope: SCOPES })
-            .then(() => {
-                gapi.auth2.getAuthInstance().signIn().then(() => {
-                    document.getElementById("fetchFilesButton").disabled = false;
-                    alert("Authentication successful!");
-                });
-            })
-            .catch(error => alert("Error during authentication: " + error));
-    });
-});
-
-// Fetch Excel files from Google Drive
-document.getElementById("fetchFilesButton").addEventListener("click", async () => {
-    let response = await gapi.client.drive.files.list({
-        q: "mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'",
-        fields: "files(id, name)"
-    });
-
-    const files = response.result.files;
-    if (!files || files.length === 0) {
-        alert("No Excel files found in Google Drive.");
-        return;
+function maybeEnableButtons() {
+    if (gapiInited && gisInited) {
+        document.getElementById('authButton').disabled = false;
     }
+}
 
-    uploadedFiles = files.map(file => file.name);
-    document.getElementById("fileList").innerHTML = "<h3>Available Files:</h3>";
-    files.forEach(file => {
-        let div = document.createElement("div");
-        div.textContent = file.name;
-        document.getElementById("fileList").appendChild(div);
-        fetchFileContent(file.id, file.name);
+// Authentication
+function authenticate() {
+    const tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: '743264679221-omplmhe5mj6vo37dbtk2dgj5vcfv6p4k.apps.googleusercontent.com',
+        scope: 'https://www.googleapis.com/auth/drive.readonly',
+        callback: async (response) => {
+            if (response.error) return;
+            document.getElementById('refreshButton').classList.remove('hidden');
+            await listDriveFiles();
+        },
     });
-});
+    tokenClient.requestAccessToken({ prompt: '' });
+}
 
-// Fetch and process file content
-async function fetchFileContent(fileId, fileName) {
-    let response = await gapi.client.drive.files.get({
-        fileId: fileId,
-        alt: "media"
-    });
+// List Google Drive files
+async function listDriveFiles() {
+    try {
+        const response = await gapi.client.drive.files.list({
+            q: "mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'",
+            fields: 'files(id,name)'
+        });
+        
+        uploadedFiles = response.result.files;
+        updateFileList();
+        document.getElementById('fileList').classList.remove('hidden');
+    } catch (error) {
+        console.error('Error listing files:', error);
+    }
+}
 
-    let blob = new Blob([new Uint8Array(response.body)], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-    let reader = new FileReader();
+// Read Excel file from Google Drive
+async function readExcelFile(fileId, fileName) {
+    try {
+        const response = await gapi.client.drive.files.get({
+            fileId: fileId,
+            alt: 'media'
+        }, { responseType: 'arraybuffer' });
 
-    reader.onload = function (event) {
-        let data = new Uint8Array(event.target.result);
-        let workbook = XLSX.read(data, { type: "array" });
-
+        const data = new Uint8Array(response.body);
+        const workbook = XLSX.read(data, { type: 'array' });
         let allData = [];
+
         workbook.SheetNames.forEach(sheetName => {
-            let rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1 });
+            const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1 });
             allData = allData.concat(rows);
         });
 
         fileData[fileName] = allData;
-    };
-
-    reader.readAsArrayBuffer(blob);
+    } catch (error) {
+        console.error('Error reading file:', error);
+    }
 }
 
-// Search for customer number
-document.getElementById("searchButton").addEventListener("click", () => {
-    let searchValue = document.getElementById("searchInput").value.trim();
-    let resultContainer = document.getElementById("resultContainer");
-    resultContainer.innerHTML = "";
+// Search functionality
+document.getElementById('searchButton').addEventListener('click', async () => {
+    const customerNumber = document.getElementById('searchInput').value.trim();
+    const resultContainer = document.getElementById('resultContainer');
+    resultContainer.innerHTML = '';
 
-    if (uploadedFiles.length === 0) {
-        resultContainer.innerHTML = '<div class="no-result">No files loaded yet.</div>';
+    if (!customerNumber) {
+        resultContainer.innerHTML = '<div class="no-result">Please enter a customer number</div>';
         return;
     }
 
     let found = false;
-    for (let fileName of uploadedFiles) {
-        let data = fileData[fileName];
-        for (let row of data) {
-            if (row.some(cell => String(cell).trim() === searchValue)) {
-                resultContainer.innerHTML += `<div class="result">Customer ${searchValue} found in ${fileName}: ${row.join(", ")}</div>`;
+    for (const file of uploadedFiles) {
+        await readExcelFile(file.id, file.name);
+        const data = fileData[file.name];
+        
+        for (const row of data) {
+            if (row.some(cell => String(cell).trim() === customerNumber)) {
+                const formattedRow = row.map(cell => {
+                    if (typeof cell === 'number' && cell > 25568) {
+                        return new Date((cell - 25569) * 86400000).toLocaleDateString();
+                    }
+                    return cell;
+                });
+                
+                resultContainer.innerHTML += `
+                    <div class="result">
+                        Customer ${customerNumber} found in ${file.name}: 
+                        ${formattedRow.join(', ')}
+                    </div>`;
                 found = true;
                 break;
             }
@@ -94,6 +110,26 @@ document.getElementById("searchButton").addEventListener("click", () => {
     }
 
     if (!found) {
-        resultContainer.innerHTML = '<div class="no-result">Customer not found in any file.</div>';
+        resultContainer.innerHTML = '<div class="no-result">Customer not found</div>';
     }
+});
+
+// File list management
+function updateFileList() {
+    const fileList = document.getElementById('fileList');
+    fileList.innerHTML = '<h3>Google Drive Files:</h3>';
+    uploadedFiles.forEach((file, index) => {
+        const fileItem = document.createElement('div');
+        fileItem.className = 'file-item';
+        fileItem.textContent = `${index + 1}: ${file.name}`;
+        fileList.appendChild(fileItem);
+    });
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+    gisInited = true;
+    gapi.load('client', initializeGapiClient);
+    document.getElementById('authButton').addEventListener('click', authenticate);
+    document.getElementById('refreshButton').addEventListener('click', listDriveFiles);
 });
