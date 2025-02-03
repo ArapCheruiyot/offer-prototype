@@ -4,7 +4,82 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Google Drive Offer Search</title>
-    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            padding: 10px;
+            background-color: #f8f8f8;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+        .container {
+            border: 1px solid #ccc;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            width: 400px;
+            position: relative;
+        }
+        .file-list {
+            margin: 15px 0;
+            padding: 10px;
+            border: 1px dashed #ccc;
+            border-radius: 5px;
+            background-color: #fafafa;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .file-item {
+            margin: 5px 0;
+            padding: 3px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .search-container {
+            margin: 15px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        #searchInput {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            padding: 8px 15px;
+            background-color: #4285f4;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #357abd;
+        }
+        #resultContainer {
+            margin-top: 15px;
+            min-height: 50px;
+        }
+        .hidden {
+            display: none;
+        }
+        #loadingSpinner {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+        }
+    </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
     <script src="https://accounts.google.com/gsi/client"></script>
     <script src="https://apis.google.com/js/api.js"></script>
@@ -13,30 +88,34 @@
     <div class="container">
         <h2>Customer Offer Search</h2>
         
-        <!-- Google Drive Authentication Button -->
-        <button id="authButton" aria-label="Connect to Google Drive">Connect Google Drive</button>
+        <!-- Authentication Section -->
+        <div class="auth-section">
+            <button id="authButton">Connect Google Drive</button>
+            <button id="refreshButton" class="hidden">Refresh Files</button>
+        </div>
 
-        <!-- Google Drive File List Section -->
+        <!-- File List Display -->
         <div class="file-list hidden" id="fileList">
-            <h3>Google Drive Files:</h3>
+            <h3>Available Spreadsheets:</h3>
             <div id="fileListContainer"></div>
         </div>
 
-        <!-- Search Section -->
+        <!-- Search Interface -->
         <div class="search-container">
-            <label for="searchInput">Enter customer number</label>
-            <input type="text" id="searchInput" placeholder="Search customer number" aria-label="Customer number search input">
-            <button id="searchButton" aria-label="Search for customer offer">Search</button>
+            <label for="searchInput"><strong>Customer Number Search:</strong></label>
+            <div class="search-input-group">
+                <input type="text" id="searchInput" placeholder="Enter customer number">
+                <button id="searchButton">Search</button>
+            </div>
         </div>
 
-        <!-- Results Container -->
+        <!-- Results Display -->
         <div id="resultContainer"></div>
 
-        <!-- Refresh Button -->
-        <button id="refreshButton" class="hidden" aria-label="Refresh file list">Refresh File List</button>
-        
-        <!-- Loading Spinner (optional for better UX) -->
-        <div id="loadingSpinner" class="hidden">Loading...</div>
+        <!-- Loading Indicator -->
+        <div id="loadingSpinner" class="hidden">
+            <div class="spinner">Processing Files...</div>
+        </div>
     </div>
 
     <script src="script.js"></script>
