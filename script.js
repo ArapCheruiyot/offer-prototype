@@ -52,6 +52,11 @@ async function listFiles(query = "") {
       fields: "files(id, name)",
       q: `mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' and name contains '${query}'`
     });
+
+    if (response.result.files.length === 0) {
+      alert('No files found with the provided search term.');
+    }
+
     uploadedFiles = response.result.files;
     displayFiles(uploadedFiles);
   } catch (error) {
@@ -62,6 +67,7 @@ async function listFiles(query = "") {
 // Function to search files based on the entered query
 function searchFiles() {
   const searchTerm = document.getElementById('searchInput').value.trim(); // Get the search term from the input box
+  console.log('Search term:', searchTerm); // Debugging log
 
   // Ensure the search term is not empty
   if (!searchTerm) {
