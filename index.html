@@ -46,14 +46,8 @@
             width: 80%;
             font-size: 16px;
         }
-        #searchProgress {
-            font-size: 14px;
-            margin-top: 10px;
-        }
-        #resultContainer {
-            margin-top: 20px;
-            font-size: 16px;
-            color: #333;
+        .hidden {
+            display: none; /* Hide elements by default */
         }
     </style>
 </head>
@@ -63,19 +57,18 @@
         <button id="authButton">Authenticate with Google</button>
 
         <!-- File List -->
-        <div class="file-list" id="fileList">
+        <div class="file-list hidden" id="fileList">
             <h3>Files from Google Drive:</h3>
             <div id="files"></div>
         </div>
 
         <!-- Search Box -->
-        <div class="search-box">
+        <div class="search-box hidden" id="searchBox">
             <input type="text" id="searchInput" placeholder="Enter customer number">
             <button id="searchButton">Search</button>
         </div>
 
-        <!-- Progress & Result Display -->
-        <div id="searchProgress"></div>
+        <!-- Result Display -->
         <div id="resultContainer"></div>
     </div>
 
