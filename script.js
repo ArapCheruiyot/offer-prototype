@@ -32,7 +32,7 @@ function authenticate() {
         return;
       }
       showUI();
-      listFiles();
+      listFiles(); // Call listFiles after authentication
     },
   });
   tokenClient.requestAccessToken({ prompt: '' });
@@ -45,17 +45,27 @@ function showUI() {
 }
 
 // List files from Google Drive
-async function listFiles() {
+async function listFiles(query = "") {
   try {
     const response = await gapi.client.drive.files.list({
       pageSize: 10,
       fields: "files(id, name)",
-      q: "mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'"
+      q: `mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' and name contains '${query}'`
     });
     uploadedFiles = response.result.files;
     displayFiles(uploadedFiles);
   } catch (error) {
     console.error('Error listing files:', error);
+  }
+}
+
+// Function to search files based on the entered query
+function searchFiles() {
+  const query = document.getElementById('searchBox').value; // Get the search query
+  if (query) {
+    listFiles(query); // Pass the query to listFiles
+  } else {
+    alert('Please enter a search term');
   }
 }
 
