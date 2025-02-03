@@ -5,76 +5,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Google Drive Search</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-            padding: 10px;
-            background-color: #f8f8f8;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            flex-direction: column;
-        }
-        .container {
-            border: 1px solid #ccc;
-            padding: 20px;
-            background-color: #fff;
-            border-radius: 5px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            width: 400px;
-            text-align: center;
-        }
-        button {
-            padding: 10px 20px;
-            font-size: 16px;
-            cursor: pointer;
-            margin: 10px;
-        }
-        .file-list {
-            margin-top: 20px;
-            text-align: left;
-        }
-        .file-item {
-            padding: 5px;
-            border-bottom: 1px solid #ccc;
-        }
-        .search-box {
-            margin-top: 20px;
-        }
-        input[type="text"] {
-            padding: 10px;
-            width: 80%;
-            font-size: 16px;
-        }
-        .hidden {
-            display: none; /* Hide elements by default */
-        }
+        /* ... (keep your existing styles) ... */
     </style>
 </head>
 <body>
     <div class="container">
         <h2>Google Drive Search</h2>
-        <button id="authButton">Authenticate with Google</button>
-
-        <!-- File List -->
+        <button id="authButton" disabled>Authenticate with Google</button>
         <div class="file-list hidden" id="fileList">
             <h3>Files from Google Drive:</h3>
             <div id="files"></div>
         </div>
-
-        <!-- Search Box -->
         <div class="search-box hidden" id="searchBox">
             <input type="text" id="searchInput" placeholder="Enter customer number">
             <button id="searchButton">Search</button>
         </div>
-
-        <!-- Result Display -->
         <div id="resultContainer"></div>
     </div>
 
-    <!-- Load Google API and Identity Services -->
-    <script src="https://apis.google.com/js/api.js"></script>
+    <!-- Load Google scripts FIRST -->
     <script src="https://accounts.google.com/gsi/client"></script>
+    <script src="https://apis.google.com/js/api.js"></script>
+    <!-- Load your script.js AFTER Google scripts -->
     <script src="script.js"></script>
 </body>
 </html>
