@@ -18,7 +18,7 @@ async function initializeGapiClient() {
 // Step 3: Handle Google Authentication
 function authenticate() {
     const tokenClient = google.accounts.oauth2.initTokenClient({
-        client_id: 'YOUR_CLIENT_ID', // Replace with your OAuth client ID
+        client_id: '743264679221-omplmhe5mj6vo37dbtk2dgj5vcfv6p4k.apps.googleusercontent.com', // Replace with your OAuth client ID
         scope: 'https://www.googleapis.com/auth/drive.readonly', // Request read-only access to Google Drive
         callback: (response) => {
             if (response.error) {
