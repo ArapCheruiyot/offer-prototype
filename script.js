@@ -3,13 +3,6 @@ let fileData = {};
 let gapiInited = false;
 let gisInited = false;
 
-// Include the XLSX library
-if (typeof XLSX === 'undefined') {
-    const script = document.createElement('script');
-    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.1/xlsx.full.min.js';
-    document.head.appendChild(script);
-}
-
 // Initialize Google API client
 function initializeGapiClient() {
   return new Promise(async (resolve) => {
@@ -109,24 +102,20 @@ async function searchFiles() {
   for (const file of uploadedFiles) {
     await readExcelFile(file.id, file.name); // Read file content
     const data = fileData[file.name];
-    if (data && Array.isArray(data)) {
-      for (const row of data) {
-        if (row.some(cell => String(cell).trim() === customerNumber)) {
-          const formattedRow = row.map(cell => {
-            if (typeof cell === 'number' && cell > 25568) { // Check for Excel date
-              const date = excelDateToJSDate(cell);
-              return date.toLocaleDateString();
-            }
-            return cell;
-          });
-          const rowData = formattedRow.join(', ');
-          resultContainer.innerHTML += `<div class="result">Found in ${file.name}: ${rowData}</div>`;
-          found = true;
-          break;
-        }
+    for (const row of data) {
+      if (row.some(cell => String(cell).trim() === customerNumber)) {
+        const formattedRow = row.map(cell => {
+          if (typeof cell === 'number' && cell > 25568) { // Check for Excel date
+            const date = excelDateToJSDate(cell);
+            return date.toLocaleDateString();
+          }
+          return cell;
+        });
+        const rowData = formattedRow.join(', ');
+        resultContainer.innerHTML += `<div class="result">Found in ${file.name}: ${rowData}</div>`;
+        found = true;
+        break;
       }
-    } else {
-      console.error('No valid data found in file:', file.name);
     }
     if (found) break; // Stop searching if found
   }
