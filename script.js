@@ -50,7 +50,7 @@ async function listFiles(query = "") {
     const response = await gapi.client.drive.files.list({
       pageSize: 10,
       fields: "files(id, name)",
-      q: `mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' and name contains '${query}'`
+      q: `mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' and lower(name) contains '${query.toLowerCase()}'`
     });
 
     if (response.result.files.length === 0) {
