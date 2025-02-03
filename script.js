@@ -73,10 +73,82 @@ function displayFiles(files) {
     });
 }
 
-// Step 7: Add event listener to the authentication button
+// Step 7: Read an Excel file from Google Drive
+async function readExcelFile(fileId, fileName) {
+    try {
+        const response = await gapi.client.drive.files.get({
+            'fileId': fileId,
+            'alt': 'media'
+        }, { responseType: 'arraybuffer' });
+        const data = new Uint8Array(response.body);
+        const workbook = XLSX.read(data, { type: 'array' });
+        let allData = [];
+        workbook.SheetNames.forEach(sheetName => {
+            const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1 });
+            allData = allData.concat(rows);
+        });
+        fileData[fileName] = allData; // Store the file data
+    } catch (error) {
+        console.error('Error reading file:', error);
+        alert('Error reading file. Check the console for details.');
+    }
+}
+
+// Step 8: Handle search functionality
+async function searchFiles() {
+    const customerNumber = document.getElementById('searchInput').value.trim();
+    const resultContainer = document.getElementById('resultContainer');
+    resultContainer.innerHTML = ''; // Clear previous results
+
+    if (!customerNumber) {
+        alert('Please enter a customer number to search.');
+        return;
+    }
+
+    if (uploadedFiles.length === 0) {
+        resultContainer.innerHTML = '<div class="no-result">No files uploaded yet.</div>';
+        return;
+    }
+
+    let found = false;
+    for (const file of uploadedFiles) {
+        await readExcelFile(file.id, file.name); // Read the file content
+        const data = fileData[file.name];
+        for (const row of data) {
+            if (row.some(cell => String(cell).trim() === customerNumber)) {
+                const formattedRow = row.map(cell => {
+                    if (typeof cell === 'number' && cell > 25568) {
+                        const date = excelDateToJSDate(cell);
+                        return date.toLocaleDateString();
+                    }
+                    return cell;
+                });
+                const rowData = formattedRow.map(cell => `<span>${cell}</span>`).join(', ');
+                resultContainer.innerHTML += `<div class="result">Customer ${customerNumber} found in ${file.name}: ${rowData}</div>`;
+                found = true;
+                break; // Stop searching this file after a match is found
+            }
+        }
+        if (found) break; // Stop searching other files after a match is found
+    }
+
+    if (!found) {
+        resultContainer.innerHTML = '<div class="no-result">Customer not found in any list.</div>';
+    }
+}
+
+// Step 9: Convert Excel date serial number to JS Date
+function excelDateToJSDate(excelDate) {
+    const msPerDay = 86400000;
+    const epoch = new Date(Date.UTC(1970, 0, 1));
+    return new Date(epoch.getTime() + (excelDate - 25569) * msPerDay);
+}
+
+// Step 10: Add event listeners
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('authButton').addEventListener('click', authenticate);
+    document.getElementById('searchButton').addEventListener('click', searchFiles);
 });
 
-// Step 8: Load the Google API script
+// Step 11: Load the Google API script
 window.gapiLoaded = gapiLoaded;
