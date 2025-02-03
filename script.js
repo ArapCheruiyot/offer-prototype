@@ -47,20 +47,14 @@ function showUI() {
 // List files from Google Drive based on search query
 async function listFiles(query = "") {
   try {
-    // Log the search term and query for debugging
-    console.log('Searching with query:', query);
-
     const response = await gapi.client.drive.files.list({
       pageSize: 10,
       fields: "files(id, name)",
       q: `mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' and lower(name) contains '${query.toLowerCase()}'`
     });
 
-    console.log('API Response:', response.result.files); // Debugging log
-
     if (response.result.files.length === 0) {
       alert('No files found with the provided search term.');
-      return;
     }
 
     uploadedFiles = response.result.files;
