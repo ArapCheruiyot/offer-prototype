@@ -12,14 +12,20 @@
     <div class="container">
         <h2>Google Drive Search</h2>
         <button id="authButton" disabled>Authenticate with Google</button>
+
+        <!-- File list section -->
         <div class="file-list hidden" id="fileList">
             <h3>Files from Google Drive:</h3>
             <div id="files"></div>
         </div>
+
+        <!-- Search box section -->
         <div class="search-box hidden" id="searchBox">
-            <input type="text" id="searchInput" placeholder="Enter customer number">
+            <input type="text" id="searchBox" placeholder="Enter part of the file name">
             <button id="searchButton">Search</button>
         </div>
+
+        <!-- Results section (optional, if you want to show additional information about files) -->
         <div id="resultContainer"></div>
     </div>
 
