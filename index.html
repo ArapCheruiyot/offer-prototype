@@ -5,7 +5,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Google Drive Search</title>
     <style>
-        /* ... (keep your existing styles) ... */
+        /* Basic styles for your app */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .hidden {
+            display: none;
+        }
+        #searchBox input {
+            width: 80%;
+            padding: 8px;
+            margin-right: 10px;
+        }
+        #searchBox button {
+            padding: 8px;
+        }
+        .file-item {
+            margin: 10px 0;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
@@ -25,13 +48,15 @@
             <button id="searchButton">Search</button>
         </div>
 
-        <!-- Results section (optional, if you want to show additional information about files) -->
+        <!-- Results section -->
         <div id="resultContainer"></div>
     </div>
 
     <!-- Load Google scripts FIRST -->
     <script src="https://accounts.google.com/gsi/client"></script>
     <script src="https://apis.google.com/js/api.js"></script>
+    <!-- Load XLSX library for Excel file reading -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
     <!-- Load your script.js AFTER Google scripts -->
     <script src="script.js"></script>
 </body>
