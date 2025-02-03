@@ -83,8 +83,52 @@ function searchFiles() {
 function displayFiles(files) {
   const filesContainer = document.getElementById('files');
   filesContainer.innerHTML = files.map((file, index) => `
-    <div class="file-item">${index + 1}: ${file.name}</div>
+    <div class="file-item" onclick="downloadFileContent('${file.id}', '${file.name}')">${index + 1}: ${file.name}</div>
   `).join('');
+}
+
+// Download and read content of an Excel file
+async function downloadFileContent(fileId, fileName) {
+  try {
+    // Fetch the file content
+    const response = await gapi.client.drive.files.get({
+      fileId: fileId,
+      alt: 'media',
+    });
+
+    const fileContent = response.body;
+    const file = new Blob([fileContent]);
+    
+    // Use xlsx to read the content of the Excel file
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      
+      // Assume that the file has a single sheet
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet);
+
+      // Search for the record in the rows
+      const searchTerm = document.getElementById('searchInput').value.trim();
+      let found = false;
+
+      rows.forEach((row, index) => {
+        if (Object.values(row).includes(searchTerm)) {
+          found = true;
+          alert(`Found in file: ${fileName}\nRow: ${JSON.stringify(row)}`);
+          return; // Stop searching after finding the record
+        }
+      });
+
+      if (!found) {
+        alert(`Record not found in file: ${fileName}`);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  } catch (error) {
+    console.error('Error downloading file:', error);
+  }
 }
 
 // Initialize when the DOM is loaded
