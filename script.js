@@ -42,7 +42,7 @@ async function loadDriveFiles() {
             fields: 'files(id,name)',
             orderBy: 'name'
         });
-        
+
         uploadedFiles = response.result.files || [];
         updateFileList();
         document.getElementById('fileList').classList.remove('hidden');
@@ -58,6 +58,7 @@ function updateFileList() {
         const fileItem = document.createElement('div');
         fileItem.className = 'file-item';
         fileItem.textContent = `${index + 1}: ${file.name}`;
+        fileItem.addEventListener('click', () => processDriveFile(file.id, file.name)); // Added click handler for processing file
         fileList.appendChild(fileItem);
     });
 }
@@ -83,7 +84,7 @@ async function processDriveFile(fileId, fileName) {
         workbook.SheetNames.forEach(sheetName => {
             const worksheet = workbook.Sheets[sheetName];
             if (!worksheet['!ref']) return;
-            
+
             const range = XLSX.utils.decode_range(worksheet['!ref']);
             for (let rowNum = range.s.r; rowNum <= range.e.r; rowNum++) {
                 const row = [];
@@ -109,7 +110,7 @@ async function executeSearch() {
     const searchTerm = document.getElementById('searchInput').value.trim();
     const resultContainer = document.getElementById('resultContainer');
     resultContainer.innerHTML = '';
-    
+
     if (!searchTerm) {
         resultContainer.innerHTML = '<div class="no-result">Please enter a search term</div>';
         return;
@@ -171,11 +172,19 @@ async function executeSearch() {
     }
 }
 
+// Helper function to format cell values (for better readability in the result)
+function formatCellValue(cell) {
+    if (cell instanceof Date) {
+        return cell.toLocaleDateString();
+    }
+    return String(cell).trim();
+}
+
 // Initialization
 document.addEventListener('DOMContentLoaded', () => {
     gisInited = true;
     gapi.load('client', initializeGapiClient);
-    
+
     document.getElementById('authButton').addEventListener('click', handleAuthClick);
     document.getElementById('searchButton').addEventListener('click', executeSearch);
     document.getElementById('refreshButton').addEventListener('click', loadDriveFiles);
