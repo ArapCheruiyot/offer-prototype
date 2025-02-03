@@ -96,7 +96,7 @@ async function processDriveFile(fileId, fileName) {
 
         fileData[fileName] = allData.filter(row => row.some(cell => cell !== ''));
         console.timeEnd(`Processed ${fileName}`);
-        console.log('Processed data sample:', JSON.parse(JSON.stringify(allData.slice(0, 5))));
+        console.log('Raw data from Excel:', JSON.parse(JSON.stringify(allData.slice(0, 5)))); // Added for debugging
     } catch (error) {
         console.error(`Error processing ${fileName}:`, error);
         fileData[fileName] = [];
@@ -120,9 +120,11 @@ async function executeSearch() {
         const searchVariants = new Set([
             cleanSearch,
             `'${cleanSearch}'`, // Excel number-as-text format
-            BigInt(cleanSearch).toString() // Handle large integers
+            BigInt(cleanSearch).toString(), // Handle large integers
+            searchTerm // Keep original input for safety
         ]);
 
+        console.log(`Searching for: ${searchTerm}`);
         console.log('Search variants:', [...searchVariants]);
 
         for (const file of uploadedFiles) {
@@ -133,10 +135,12 @@ async function executeSearch() {
             for (const [rowIndex, row] of sheetData.entries()) {
                 const rowValues = row.map(cell => {
                     if (typeof cell === 'number' && cell > 25568) {
-                        return new Date((cell - 25569) * 86400000).toLocaleDateString();
+                        return new Date((cell - 25569) * 86400000).toLocaleDateString(); // Convert Excel date
                     }
-                    return String(cell).replace(/[^0-9]/g, '');
+                    return String(cell).trim(); // Ensure all values are treated as strings
                 });
+
+                console.log(`Comparing against:`, rowValues);
 
                 if (rowValues.some(value => searchVariants.has(value))) {
                     const formattedRow = row.map(cell => formatCellValue(cell));
