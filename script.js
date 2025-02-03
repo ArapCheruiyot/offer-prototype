@@ -61,7 +61,7 @@ function updateFileList() {
     });
 }
 
-// Excel File Processing (Enhanced)
+// Excel File Processing
 async function processDriveFile(fileId, fileName) {
     try {
         console.time(`Processed ${fileName}`);
@@ -75,7 +75,8 @@ async function processDriveFile(fileId, fileName) {
             type: 'array',
             cellText: false,
             cellDates: true,
-            dateNF: 'yyyy-mm-dd'
+            dateNF: 'yyyy-mm-dd',
+            rawNumbers: false
         });
 
         const allData = [];
@@ -83,23 +84,23 @@ async function processDriveFile(fileId, fileName) {
             const worksheet = workbook.Sheets[sheetName];
             const rows = XLSX.utils.sheet_to_json(worksheet, { 
                 header: 1,
-                defval: null,
-                rawNumbers: false
+                defval: '',
+                raw: false
             });
             
-            allData.push(...rows.filter(row => row.some(cell => cell !== null)));
+            allData.push(...rows.filter(row => row.some(cell => cell !== '')));
         });
 
         fileData[fileName] = allData;
         console.timeEnd(`Processed ${fileName}`);
-        console.log('Processed data sample:', allData.slice(0, 3));
+        console.log('Processed data sample:', JSON.parse(JSON.stringify(allData.slice(0, 3))));
     } catch (error) {
         console.error(`Error processing ${fileName}:`, error);
         fileData[fileName] = [];
     }
 }
 
-// Search Functionality (Enhanced)
+// Search Functionality (Final Optimized)
 async function executeSearch() {
     const searchTerm = document.getElementById('searchInput').value.trim();
     const resultContainer = document.getElementById('resultContainer');
@@ -112,33 +113,39 @@ async function executeSearch() {
 
     try {
         let found = false;
-        console.log('Starting search for:', searchTerm);
+        const normalizedSearch = searchTerm.replace(/[\s\u00A0]+/g, ' ').toLowerCase().normalize('NFKC');
+        console.log('Normalized search term:', normalizedSearch, 'Length:', normalizedSearch.length);
 
         for (const file of uploadedFiles) {
-            console.group('Processing file:', file.name);
+            console.groupCollapsed(`Processing ${file.name}`);
             await processDriveFile(file.id, file.name);
             const sheetData = fileData[file.name] || [];
-            console.log('File data:', sheetData);
 
             for (const [rowIndex, row] of sheetData.entries()) {
-                if (!Array.isArray(row)) {
-                    console.warn(`Skipping non-array row at index ${rowIndex}`);
-                    continue;
-                }
+                if (!Array.isArray(row)) continue;
 
-                const cleanRow = row.map(cell => {
-                    const strCell = String(cell).trim();
-                    return strCell.replace(/[\s\u00A0]+/g, ' ');
+                const analyzedRow = row.map((cell, cellIndex) => {
+                    // Normalize cell value
+                    const strVal = String(cell).trim()
+                        .replace(/[\s\u00A0]+/g, ' ')
+                        .toLowerCase()
+                        .normalize('NFKC');
+                    
+                    // Check both string and numeric matches
+                    const numericVal = Number(strVal);
+                    const isNumericMatch = !isNaN(numericVal) && numericVal === Number(normalizedSearch);
+                    
+                    return {
+                        cellIndex,
+                        original: cell,
+                        normalized: strVal,
+                        isMatch: strVal === normalizedSearch || isNumericMatch
+                    };
                 });
 
-                const match = cleanRow.some(cell => {
-                    const compareResult = cell === searchTerm;
-                    console.log(`Comparing "${cell}" vs "${searchTerm}":`, compareResult);
-                    return compareResult;
-                });
-
-                if (match) {
-                    console.log('Match found at row:', rowIndex + 1);
+                console.log(`Row ${rowIndex + 1}:`, analyzedRow);
+                
+                if (analyzedRow.some(cell => cell.isMatch)) {
                     const formattedRow = row.map(cell => formatCellValue(cell));
                     resultContainer.innerHTML += `
                         <div class="result">
@@ -155,29 +162,45 @@ async function executeSearch() {
         }
 
         if (!found) {
-            console.warn('No matches found in any files');
-            resultContainer.innerHTML = '<div class="no-result">No matches found</div>';
+            console.warn('No matches found - Final Check');
+            resultContainer.innerHTML = `
+                <div class="no-result">
+                    No matches found for "${searchTerm}"<br>
+                    (Normalized: "${normalizedSearch}")
+                </div>`;
         }
     } catch (error) {
         console.error('Search error:', error);
-        resultContainer.innerHTML = '<div class="no-result">Search failed</div>';
+        resultContainer.innerHTML = '<div class="no-result">Search failed - Check console</div>';
     }
 }
 
-// New Helper Function
+// Enhanced Cell Formatting
 function formatCellValue(cell) {
     try {
+        // Handle Excel date serial numbers
+        if (typeof cell === 'number' && cell > 25568 && cell < 2958466) {
+            const date = new Date((cell - 25569) * 86400000);
+            return isNaN(date) ? cell : date.toLocaleDateString();
+        }
+        
+        // Handle numeric values
         const numericValue = Number(cell);
         if (!isNaN(numericValue)) {
-            if (numericValue > 25568 && numericValue < 2958466) {
-                return new Date((numericValue - 25569) * 86400000).toLocaleDateString();
-            }
             return numericValue.toLocaleString();
         }
-    } catch {
-        // Fallback to string representation
+        
+        // Handle boolean values
+        if (typeof cell === 'boolean') {
+            return cell ? 'Yes' : 'No';
+        }
+        
+    } catch (error) {
+        console.warn('Formatting error:', error);
     }
-    return String(cell).trim();
+    
+    // Default string handling
+    return String(cell).trim().replace(/[\s\u00A0]+/g, ' ');
 }
 
 // Initialization
