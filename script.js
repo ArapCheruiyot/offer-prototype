@@ -22,7 +22,7 @@ function toggleAuthButton() {
 // Authentication Flow
 function handleAuthClick() {
     const tokenClient = google.accounts.oauth2.initTokenClient({
-        client_id: 'YOUR_CLIENT_ID',
+        client_id: '743264679221-omplmhe5mj6vo37dbtk2dgj5vcfv6p4k.apps.googleusercontent.com',
         scope: 'https://www.googleapis.com/auth/drive.readonly',
         callback: async (response) => {
             if (response.error) return;
