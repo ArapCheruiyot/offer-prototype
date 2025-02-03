@@ -100,7 +100,6 @@ async function processDriveFile(fileId, fileName) {
     }
 }
 
-// Search Functionality (Final Optimized)
 async function executeSearch() {
     const searchTerm = document.getElementById('searchInput').value.trim();
     const resultContainer = document.getElementById('resultContainer');
@@ -113,44 +112,55 @@ async function executeSearch() {
 
     try {
         let found = false;
-        const normalizedSearch = searchTerm.replace(/[\s\u00A0]+/g, ' ').toLowerCase().normalize('NFKC');
-        console.log('Normalized search term:', normalizedSearch, 'Length:', normalizedSearch.length);
+        const normalizedSearch = searchTerm.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        console.log('Ultimate search analysis:', {
+            original: searchTerm,
+            normalized: normalizedSearch,
+            codes: Array.from(normalizedSearch).map(c => c.charCodeAt(0)),
+            length: normalizedSearch.length
+        });
 
         for (const file of uploadedFiles) {
-            console.groupCollapsed(`Processing ${file.name}`);
+            console.groupCollapsed(`PROCESSING ${file.name}`);
             await processDriveFile(file.id, file.name);
             const sheetData = fileData[file.name] || [];
 
             for (const [rowIndex, row] of sheetData.entries()) {
                 if (!Array.isArray(row)) continue;
 
-                const analyzedRow = row.map((cell, cellIndex) => {
-                    // Normalize cell value
-                    const strVal = String(cell).trim()
-                        .replace(/[\s\u00A0]+/g, ' ')
-                        .toLowerCase()
-                        .normalize('NFKC');
-                    
-                    // Check both string and numeric matches
-                    const numericVal = Number(strVal);
-                    const isNumericMatch = !isNaN(numericVal) && numericVal === Number(normalizedSearch);
+                const matchAnalysis = row.map((cell, cellIndex) => {
+                    // Deep inspection
+                    const rawValue = cell;
+                    const type = typeof cell;
+                    const strValue = String(cell).trim();
+                    const normalizedCell = strValue.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
                     
                     return {
                         cellIndex,
-                        original: cell,
-                        normalized: strVal,
-                        isMatch: strVal === normalizedSearch || isNumericMatch
+                        rawValue,
+                        type,
+                        strValue,
+                        normalizedCell,
+                        codes: Array.from(normalizedCell).map(c => c.charCodeAt(0)),
+                        isExactMatch: normalizedCell === normalizedSearch,
+                        isNumericMatch: !isNaN(Number(normalizedCell)) && 
+                                      !isNaN(Number(normalizedSearch)) && 
+                                      Number(normalizedCell) === Number(normalizedSearch)
                     };
                 });
 
-                console.log(`Row ${rowIndex + 1}:`, analyzedRow);
+                console.log(`Row ${rowIndex + 1} analysis:`, matchAnalysis);
                 
-                if (analyzedRow.some(cell => cell.isMatch)) {
+                if (matchAnalysis.some(cell => cell.isExactMatch || cell.isNumericMatch)) {
+                    const matches = matchAnalysis.filter(cell => cell.isExactMatch || cell.isNumericMatch);
+                    console.log('MATCH FOUND:', matches);
+                    
                     const formattedRow = row.map(cell => formatCellValue(cell));
                     resultContainer.innerHTML += `
                         <div class="result">
-                            Match found in ${file.name} (Row ${rowIndex + 1}):
-                            ${formattedRow.join(' | ')}
+                            Match found in ${file.name} (Row ${rowIndex + 1}):<br>
+                            ${formattedRow.join(' | ')}<br>
+                            Match Type: ${matches.map(m => m.isExactMatch ? 'Exact' : 'Numeric').join(', ')}
                         </div>`;
                     found = true;
                     break;
@@ -162,11 +172,12 @@ async function executeSearch() {
         }
 
         if (!found) {
-            console.warn('No matches found - Final Check');
+            console.warn('DEEP ANALYSIS: No matches found');
             resultContainer.innerHTML = `
                 <div class="no-result">
                     No matches found for "${searchTerm}"<br>
-                    (Normalized: "${normalizedSearch}")
+                    Normalized: "${normalizedSearch}"<br>
+                    Character codes: [${Array.from(normalizedSearch).map(c => c.charCodeAt(0)).join(', ')}]
                 </div>`;
         }
     } catch (error) {
@@ -174,7 +185,6 @@ async function executeSearch() {
         resultContainer.innerHTML = '<div class="no-result">Search failed - Check console</div>';
     }
 }
-
 // Enhanced Cell Formatting
 function formatCellValue(cell) {
     try {
