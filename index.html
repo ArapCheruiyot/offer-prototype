@@ -12,18 +12,33 @@
 <body>
     <div class="container">
         <h2>Customer Offer Search</h2>
-        <button id="authButton">Connect Google Drive</button>
         
+        <!-- Google Drive Authentication Button -->
+        <button id="authButton" aria-label="Connect to Google Drive">Connect Google Drive</button>
+
+        <!-- Google Drive File List Section -->
         <div class="file-list hidden" id="fileList">
             <h3>Google Drive Files:</h3>
+            <div id="fileListContainer"></div>
         </div>
 
-        <input type="text" id="searchInput" placeholder="Enter customer number">
-        <button id="searchButton">Search</button>
-        
+        <!-- Search Section -->
+        <div class="search-container">
+            <label for="searchInput">Enter customer number</label>
+            <input type="text" id="searchInput" placeholder="Search customer number" aria-label="Customer number search input">
+            <button id="searchButton" aria-label="Search for customer offer">Search</button>
+        </div>
+
+        <!-- Results Container -->
         <div id="resultContainer"></div>
-        <button id="refreshButton" class="hidden">Refresh File List</button>
+
+        <!-- Refresh Button -->
+        <button id="refreshButton" class="hidden" aria-label="Refresh file list">Refresh File List</button>
+        
+        <!-- Loading Spinner (optional for better UX) -->
+        <div id="loadingSpinner" class="hidden">Loading...</div>
     </div>
+
     <script src="script.js"></script>
 </body>
 </html>
