@@ -61,33 +61,45 @@ function updateFileList() {
     });
 }
 
-// Excel File Processing
+// Excel File Processing (Enhanced)
 async function processDriveFile(fileId, fileName) {
     try {
+        console.time(`Processed ${fileName}`);
         const response = await gapi.client.drive.files.get({
             fileId: fileId,
             alt: 'media'
         }, { responseType: 'arraybuffer' });
 
         const data = new Uint8Array(response.body);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const allData = [];
+        const workbook = XLSX.read(data, { 
+            type: 'array',
+            cellText: false,
+            cellDates: true,
+            dateNF: 'yyyy-mm-dd'
+        });
 
+        const allData = [];
         workbook.SheetNames.forEach(sheetName => {
             const worksheet = workbook.Sheets[sheetName];
-            const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-            allData.push(...rows.filter(row => row.length));
+            const rows = XLSX.utils.sheet_to_json(worksheet, { 
+                header: 1,
+                defval: null,
+                rawNumbers: false
+            });
+            
+            allData.push(...rows.filter(row => row.some(cell => cell !== null)));
         });
 
         fileData[fileName] = allData;
-        console.log(`Processed: ${fileName}`, allData);
+        console.timeEnd(`Processed ${fileName}`);
+        console.log('Processed data sample:', allData.slice(0, 3));
     } catch (error) {
         console.error(`Error processing ${fileName}:`, error);
         fileData[fileName] = [];
     }
 }
 
-// In script.js - Updated search function with debugging
+// Search Functionality (Enhanced)
 async function executeSearch() {
     const searchTerm = document.getElementById('searchInput').value.trim();
     const resultContainer = document.getElementById('resultContainer');
@@ -115,9 +127,8 @@ async function executeSearch() {
                 }
 
                 const cleanRow = row.map(cell => {
-                    // Handle different data types and formatting
                     const strCell = String(cell).trim();
-                    return strCell.replace(/[\s\u00A0]+/g, ' '); // Normalize whitespace
+                    return strCell.replace(/[\s\u00A0]+/g, ' ');
                 });
 
                 const match = cleanRow.some(cell => {
@@ -153,13 +164,11 @@ async function executeSearch() {
     }
 }
 
-// New helper function for value formatting
+// New Helper Function
 function formatCellValue(cell) {
     try {
-        // Handle Excel number storage quirks
         const numericValue = Number(cell);
         if (!isNaN(numericValue)) {
-            // Check if value is an Excel date
             if (numericValue > 25568 && numericValue < 2958466) {
                 return new Date((numericValue - 25569) * 86400000).toLocaleDateString();
             }
@@ -170,45 +179,6 @@ function formatCellValue(cell) {
     }
     return String(cell).trim();
 }
-
-// Updated file processing with better error handling
-async function processDriveFile(fileId, fileName) {
-    try {
-        console.time(`Processed ${fileName}`);
-        const response = await gapi.client.drive.files.get({
-            fileId: fileId,
-            alt: 'media'
-        }, { responseType: 'arraybuffer' });
-
-        const data = new Uint8Array(response.body);
-        const workbook = XLSX.read(data, { 
-            type: 'array',
-            cellText: false,  // Get raw values
-            cellDates: true,  // Parse dates
-            dateNF: 'yyyy-mm-dd' // Date format
-        });
-
-        const allData = [];
-        workbook.SheetNames.forEach(sheetName => {
-            const worksheet = workbook.Sheets[sheetName];
-            const rows = XLSX.utils.sheet_to_json(worksheet, { 
-                header: 1,
-                defval: null, // Preserve empty cells
-                rawNumbers: false // Convert numbers to strings
-            });
-            
-            allData.push(...rows.filter(row => row.some(cell => cell !== null)));
-        });
-
-        fileData[fileName] = allData;
-        console.timeEnd(`Processed ${fileName}`);
-        console.log('Processed data sample:', allData.slice(0, 3));
-    } catch (error) {
-        console.error(`Error processing ${fileName}:`, error);
-        fileData[fileName] = [];
-    }
-}
-
 
 // Initialization
 document.addEventListener('DOMContentLoaded', () => {
