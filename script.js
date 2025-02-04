@@ -36,7 +36,7 @@ function loadGapi() {
 function initClient() {
     gapi.client.init({
         apiKey: 'YOUR_API_KEY',
-        clientId: '743264679221-omplmhe5mj6vo37dbtk2dgj5vcfv6p4k.apps.googleusercontent.com',
+        clientId: 'YOUR_CLIENT_ID',
         discoveryDocs: ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"],
         scope: 'https://www.googleapis.com/auth/drive.readonly'
     }).then(function () {
@@ -57,7 +57,12 @@ function updateSigninStatus(isSignedIn) {
 
 function searchFiles() {
     const searchTerm = document.getElementById('searchInput').value;
-    const files = document.getElementById('fileListUl').getElementsByTagName('li');
+    const fileListUl = document.getElementById('fileListUl');
+    if (!fileListUl) {
+        console.error('File list element not found');
+        return;
+    }
+    const files = fileListUl.getElementsByTagName('li');
     Array.from(files).forEach(fileItem => {
         const fileId = fileItem.textContent.split('(')[1].replace(')', '').trim();
         gapi.client.drive.files.get({
