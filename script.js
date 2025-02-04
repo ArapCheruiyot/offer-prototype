@@ -6,7 +6,7 @@ function authenticate() {
         listFiles();
         document.getElementById('fileList').classList.remove('hidden');
         document.getElementById('refreshButton').classList.remove('hidden');
-    });
+    }).catch(error => console.error('Authentication error', error));
 }
 
 function listFiles() {
@@ -26,7 +26,7 @@ function listFiles() {
         } else {
             fileListUl.innerHTML = '<li>No files found.</li>';
         }
-    });
+    }).catch(error => console.error('Error listing files', error));
 }
 
 function loadGapi() {
@@ -43,7 +43,7 @@ function initClient() {
         gapi.auth2.getAuthInstance().isSignedIn.listen(updateSigninStatus);
         updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get());
         gapiLoaded = true;
-    });
+    }).catch(error => console.error('Client initialization error', error));
 }
 
 function updateSigninStatus(isSignedIn) {
