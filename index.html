@@ -8,7 +8,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
     <script src="https://accounts.google.com/gsi/client"></script>
     <script src="https://apis.google.com/js/api.js"></script>
-    <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' https://apis.google.com https://accounts.google.com https://cdnjs.cloudflare.com">
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' 'unsafe-eval' https://apis.google.com https://accounts.google.com https://cdnjs.cloudflare.com 'nonce-random123'">
 </head>
 <body>
     <div class="container">
@@ -26,6 +26,6 @@
         <div id="resultContainer"></div>
         <button id="refreshButton" class="hidden">Refresh File List</button>
     </div>
-    <script src="script.js"></script>
+    <script src="script.js" nonce="random123"></script>
 </body>
 </html>
