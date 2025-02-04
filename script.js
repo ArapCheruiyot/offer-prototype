@@ -3,25 +3,29 @@ let fileData = {};
 let gapiInited = false;
 let gisInited = false;
 
-// Google API Initialization
-function initializeGapiClient() {
-    return gapi.client.init({
-        apiKey: 'AIzaSyB4sLg6u5Lq6TZz8T9qJ7J7X7Z7X7Z7X7Z',
-        discoveryDocs: ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"],
-    }).then(() => {
+// Google Drive API Initialization
+async function initializeGapiClient() {
+    try {
+        await gapi.client.init({
+            apiKey: 'YOUR_API_KEY',
+            discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
+        });
         gapiInited = true;
         toggleAuthButton();
-    });
+        console.log('Google Drive API initialized');
+    } catch (error) {
+        console.error('Error initializing Google Drive API:', error);
+    }
 }
 
 function toggleAuthButton() {
     document.getElementById('authButton').disabled = !(gapiInited && gisInited);
 }
 
-// Authentication
+// Authentication Flow
 function handleAuthClick() {
     const tokenClient = google.accounts.oauth2.initTokenClient({
-        client_id: '743264679221-omplmhe5mj6vo37dbtk2dgj5vcfv6p4k.apps.googleusercontent.com',
+        client_id: 'YOUR_CLIENT_ID.apps.googleusercontent.com',
         scope: 'https://www.googleapis.com/auth/drive.readonly',
         callback: async (response) => {
             if (response.error) return;
@@ -32,30 +36,45 @@ function handleAuthClick() {
     tokenClient.requestAccessToken({ prompt: '' });
 }
 
-// File Management
+// File Management (Fixed)
 async function loadDriveFiles() {
     try {
         const response = await gapi.client.drive.files.list({
             q: "mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'",
-            fields: 'files(id,name,modifiedTime)',
+            fields: 'files(id,name)',
             orderBy: 'name'
         });
         
         uploadedFiles = response.result.files || [];
         await processAllFiles();
-        updateFileList();
+        updateFileList(); // Now properly defined
         document.getElementById('fileList').classList.remove('hidden');
     } catch (error) {
         console.error('File loading error:', error);
     }
 }
 
+// Add missing function
+function updateFileList() {
+    const fileList = document.getElementById('fileList');
+    fileList.innerHTML = '<h3>Google Drive Files:</h3>';
+    uploadedFiles.forEach((file, index) => {
+        const fileItem = document.createElement('div');
+        fileItem.className = 'file-item';
+        fileItem.textContent = `${index + 1}: ${file.name}`;
+        fileList.appendChild(fileItem);
+    });
+}
+
+// Add missing processing function
 async function processAllFiles() {
     const processingPromises = uploadedFiles.map(file => 
         processDriveFile(file.id, file.name)
     );
     await Promise.all(processingPromises);
 }
+
+// Rest of your existing code for processDriveFile, executeSearch, etc...
 
 // Excel Processing
 async function processDriveFile(fileId, fileName) {
