@@ -4,107 +4,26 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Google Drive Offer Search</title>
-    <style>
-        /* Previous styles remain the same */
-
-        /* Enhanced Loading Spinner */
-        #loadingSpinner {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(255, 255, 255, 0.95);
-            padding: 20px 40px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-            display: none;
-            align-items: center;
-            gap: 15px;
-            z-index: 1000;
-        }
-
-        .spinner {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #4285f4;
-            border-radius: 50%;
-            width: 24px;
-            height: 24px;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        /* Error Message Styling */
-        .error-message {
-            color: #dc3545;
-            padding: 10px;
-            margin-top: 10px;
-            border: 1px solid #f5c6cb;
-            border-radius: 4px;
-            background-color: #f8d7da;
-        }
-    </style>
-    <!-- Scripts remain the same -->
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+    <script src="https://accounts.google.com/gsi/client"></script>
+    <script src="https://apis.google.com/js/api.js"></script>
 </head>
 <body>
     <div class="container">
-        <!-- Previous content remains the same -->
-
-        <!-- Enhanced Loading Spinner -->
-        <div id="loadingSpinner" class="hidden">
-            <div class="spinner"></div>
-            <div class="loading-text">Processing Files...</div>
+        <h2>Customer Offer Search</h2>
+        <button id="authButton">Connect Google Drive</button>
+        
+        <div class="file-list hidden" id="fileList">
+            <h3>Google Drive Files:</h3>
         </div>
+
+        <input type="text" id="searchInput" placeholder="Enter customer number">
+        <button id="searchButton">Search</button>
+        
+        <div id="resultContainer"></div>
+        <button id="refreshButton" class="hidden">Refresh File List</button>
     </div>
-
-    <script>
-        // Add to your existing script.js
-        function showLoading() {
-            document.getElementById('loadingSpinner').classList.remove('hidden');
-        }
-
-        function hideLoading() {
-            document.getElementById('loadingSpinner').classList.add('hidden');
-        }
-
-        // Modify your processDriveFile function
-        async function processDriveFile(fileId, fileName) {
-            showLoading();
-            try {
-                // Existing processing code
-            } catch (error) {
-                console.error(`Error processing ${fileName}:`, error);
-                showError(`Failed to process ${fileName}`);
-                fileData[fileName] = [];
-            } finally {
-                hideLoading();
-            }
-        }
-
-        // Modify executeSearch function
-        async function executeSearch() {
-            showLoading();
-            try {
-                // Existing search code
-            } catch (error) {
-                console.error('Search error:', error);
-                showError('Search operation failed');
-            } finally {
-                hideLoading();
-            }
-        }
-
-        // Add error display function
-        function showError(message) {
-            const errorDiv = document.createElement('div');
-            errorDiv.className = 'error-message';
-            errorDiv.textContent = message;
-            document.getElementById('resultContainer').appendChild(errorDiv);
-            setTimeout(() => errorDiv.remove(), 5000);
-        }
-    </script>
+    <script src="script.js"></script>
 </body>
 </html>
