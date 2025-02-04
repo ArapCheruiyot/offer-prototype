@@ -6,7 +6,13 @@ function authenticate() {
         listFiles();
         document.getElementById('fileList').classList.remove('hidden');
         document.getElementById('refreshButton').classList.remove('hidden');
-    }).catch(error => console.error('Authentication error', error));
+    }).catch(error => {
+        if (error.error === 'popup_closed_by_user') {
+            alert('Authentication was not completed. Please try again and complete the sign-in process.');
+        } else {
+            console.error('Authentication error', error);
+        }
+    });
 }
 
 function listFiles() {
