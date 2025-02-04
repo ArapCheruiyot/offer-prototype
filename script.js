@@ -1,193 +1,121 @@
-let uploadedFiles = [];
-let fileData = {};
-let gapiInited = false;
-let gisInited = false;
-
-// Google Drive API Initialization
-async function initializeGapiClient() {
-    try {
-        await gapi.client.init({
-            apiKey: '',
-            discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
-        });
-        gapiInited = true;
-        toggleAuthButton();
-        console.log('Google Drive API initialized');
-    } catch (error) {
-        console.error('Error initializing Google Drive API:', error);
-    }
-}
-
-function toggleAuthButton() {
-    document.getElementById('authButton').disabled = !(gapiInited && gisInited);
-}
-
-// Authentication Flow
-function handleAuthClick() {
-    const tokenClient = google.accounts.oauth2.initTokenClient({
-        client_id: '743264679221-omplmhe5mj6vo37dbtk2dgj5vcfv6p4k.apps.googleusercontent.com',
-        scope: 'https://www.googleapis.com/auth/drive.readonly',
-        callback: async (response) => {
-            if (response.error) return;
-            document.getElementById('refreshButton').classList.remove('hidden');
-            await loadDriveFiles();
-        },
-    });
-    tokenClient.requestAccessToken({ prompt: '' });
-}
-
-// File Management (Fixed)
-async function loadDriveFiles() {
-    try {
-        const response = await gapi.client.drive.files.list({
-            q: "mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'",
-            fields: 'files(id,name)',
-            orderBy: 'name'
-        });
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Drive Offer Search</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+    <script src="https://accounts.google.com/gsi/client"></script>
+    <script src="https://apis.google.com/js/api.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h2>Customer Offer Search</h2>
+        <button id="authButton">Connect Google Drive</button>
         
-        uploadedFiles = response.result.files || [];
-        await processAllFiles();
-        updateFileList(); // Now properly defined
-        document.getElementById('fileList').classList.remove('hidden');
-    } catch (error) {
-        console.error('File loading error:', error);
-    }
-}
+        <div class="file-list hidden" id="fileList">
+            <h3>Google Drive Files:</h3>
+            <ul id="fileListUl"></ul>
+        </div>
 
-// Add missing function
-function updateFileList() {
-    const fileList = document.getElementById('fileList');
-    fileList.innerHTML = '<h3>Google Drive Files:</h3>';
-    uploadedFiles.forEach((file, index) => {
-        const fileItem = document.createElement('div');
-        fileItem.className = 'file-item';
-        fileItem.textContent = `${index + 1}: ${file.name}`;
-        fileList.appendChild(fileItem);
-    });
-}
+        <input type="text" id="searchInput" placeholder="Enter customer number">
+        <button id="searchButton">Search</button>
+        
+        <div id="resultContainer"></div>
+        <button id="refreshButton" class="hidden">Refresh File List</button>
+    </div>
+    <script>
+        let gapiLoaded = false;
 
-// Add missing processing function
-async function processAllFiles() {
-    const processingPromises = uploadedFiles.map(file => 
-        processDriveFile(file.id, file.name)
-    );
-    await Promise.all(processingPromises);
-}
-
-// Rest of your existing code for processDriveFile, executeSearch, etc...
-
-// Excel Processing
-async function processDriveFile(fileId, fileName) {
-    try {
-        const response = await gapi.client.drive.files.get({
-            fileId: fileId,
-            alt: 'media'
-        }, { responseType: 'arraybuffer' });
-
-        const data = new Uint8Array(response.body);
-        const workbook = XLSX.read(data, {
-            type: 'array',
-            cellDates: true,
-            cellText: false,
-            dense: true
-        });
-
-        const allData = [];
-        workbook.SheetNames.forEach(sheetName => {
-            const worksheet = workbook.Sheets[sheetName];
-            const jsonData = XLSX.utils.sheet_to_json(worksheet, {
-                header: 1,
-                defval: '',
-                blankrows: false
+        function authenticate() {
+            gapi.auth2.getAuthInstance().signIn().then(() => {
+                console.log('Sign-in successful');
+                listFiles();
+                document.getElementById('fileList').classList.remove('hidden');
+                document.getElementById('refreshButton').classList.remove('hidden');
             });
-            allData.push(...jsonData);
-        });
-
-        fileData[fileName] = allData.filter(row => 
-            row.some(cell => cell !== '' && cell !== null)
-        );
-    } catch (error) {
-        console.error(`Error processing ${fileName}:`, error);
-        fileData[fileName] = [];
-    }
-}
-
-function formatCellValue(cell) {
-    if (typeof cell === 'number') {
-        if (cell > 25568) { // Excel date threshold
-            const date = new Date((cell - 25569) * 86400000);
-            return isNaN(date) ? cell : date.toLocaleDateString();
         }
-        return cell.toString().replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1,'); // Format numbers
-    }
-    return cell;
-}
 
-// Search Functionality
-async function executeSearch() {
-    const searchTerm = document.getElementById('searchInput').value.trim();
-    const resultContainer = document.getElementById('resultContainer');
-    resultContainer.innerHTML = '';
-    
-    if (!searchTerm) {
-        resultContainer.innerHTML = '<div class="no-result">Please enter a search term</div>';
-        return;
-    }
-
-    try {
-        let found = false;
-        const normalizedSearch = searchTerm.replace(/[^0-9]/g, '');
-
-        for (const file of uploadedFiles) {
-            const sheetData = fileData[file.name] || [];
-            for (const [rowIndex, row] of sheetData.entries()) {
-                const stringRow = row.map(cell => {
-                    if (typeof cell === 'number') {
-                        if (cell > 25568) {
-                            const date = new Date((cell - 25569) * 86400000);
-                            return isNaN(date) ? cell.toString() : date.toLocaleDateString();
-                        }
-                        return cell.toString();
-                    }
-                    return String(cell).trim().replace(/^'+|'+$/g, '');
-                });
-
-                if (stringRow.some(cell => cell.includes(normalizedSearch))) {
-                    const formattedRow = row.map(formatCellValue);
-                    resultContainer.innerHTML += 
-                        `<div class="result">
-                            Match found in ${file.name} (Row ${rowIndex + 1}):<br>
-                            ${formattedRow.join(' | ')}
-                        </div>`;
-                    found = true;
-                    break;
+        function listFiles() {
+            gapi.client.drive.files.list({
+                pageSize: 10,
+                fields: "nextPageToken, files(id, name, mimeType)"
+            }).then(function(response) {
+                const files = response.result.files;
+                const fileListUl = document.getElementById('fileListUl');
+                fileListUl.innerHTML = '';
+                if (files && files.length > 0) {
+                    files.forEach(function(file) {
+                        const li = document.createElement('li');
+                        li.textContent = `${file.name} (${file.id})`;
+                        fileListUl.appendChild(li);
+                    });
+                } else {
+                    fileListUl.innerHTML = '<li>No files found.</li>';
                 }
+            });
+        }
+
+        function loadGapi() {
+            gapi.load('client:auth2', initClient);
+        }
+
+        function initClient() {
+            gapi.client.init({
+                apiKey: 'YOUR_API_KEY',
+                clientId: 'YOUR_CLIENT_ID',
+                discoveryDocs: ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"],
+                scope: 'https://www.googleapis.com/auth/drive.readonly'
+            }).then(function () {
+                gapi.auth2.getAuthInstance().isSignedIn.listen(updateSigninStatus);
+                updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get());
+                gapiLoaded = true;
+            });
+        }
+
+        function updateSigninStatus(isSignedIn) {
+            if (isSignedIn) {
+                document.getElementById('authButton').style.display = 'none';
+                listFiles();
+            } else {
+                document.getElementById('authButton').style.display = 'block';
             }
-            if (found) break;
         }
 
-        if (!found) {
-            resultContainer.innerHTML = 
-                `<div class="no-result">
-                    No matches found for "${searchTerm}"
-                </div>`;
-        }
-    } catch (error) {
-        console.error('Search error:', error);
-        resultContainer.innerHTML = '<div class="no-result">Search failed - Check console</div>';
-    }
-}
+        function searchFiles() {
+            const searchTerm = document.getElementById('searchInput').value;
+            const files = document.getElementById('fileListUl').getElementsByTagName('li');
+            Array.from(files).forEach(fileItem => {
+                const fileId = fileItem.textContent.split('(')[1].replace(')', '').trim();
+                gapi.client.drive.files.get({
+                    fileId: fileId,
+                    alt: 'media'
+                }).then(response => {
+                    const workbook = XLSX.read(new Uint8Array(response.body), { type: 'array' });
+                    const sheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
+                    const data = XLSX.utils.sheet_to_json(worksheet);
 
-// Initialization
-document.addEventListener('DOMContentLoaded', () => {
-    gisInited = true;
-    gapi.load('client', initializeGapiClient);
-    
-    document.getElementById('authButton').addEventListener('click', handleAuthClick);
-    document.getElementById('searchButton').addEventListener('click', executeSearch);
-    document.getElementById('refreshButton').addEventListener('click', () => {
-        uploadedFiles = [];
-        fileData = {};
-        loadDriveFiles();
-    });
-});
+                    const results = data.filter(row => {
+                        return Object.values(row).some(cell => String(cell).includes(searchTerm));
+                    });
+
+                    if (results.length > 0) {
+                        document.getElementById('resultContainer').innerHTML = `<h3>Results in ${fileItem.textContent}</h3><pre>${JSON.stringify(results, null, 2)}</pre>`;
+                    } else {
+                        document.getElementById('resultContainer').innerHTML = `<p>No results found in ${fileItem.textContent}</p>`;
+                    }
+                }).catch(error => console.error('Error reading file:', error));
+            });
+        }
+
+        document.getElementById('authButton').addEventListener('click', authenticate);
+        document.getElementById('searchButton').addEventListener('click', searchFiles);
+        document.getElementById('refreshButton').addEventListener('click', listFiles);
+
+        // Load the Google API library
+        loadGapi();
+    </script>
+</body>
+</html>
