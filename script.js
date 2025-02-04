@@ -3,24 +3,22 @@ let fileData = {};
 let gapiInited = false;
 let gisInited = false;
 
-// Google Drive API Initialization
-async function initializeGapiClient() {
-    try {
-        await gapi.client.init({});
-        await gapi.client.load('https://content.googleapis.com/discovery/v1/apis/drive/v3/rest');
+// Google API Initialization
+function initializeGapiClient() {
+    return gapi.client.init({
+        apiKey: 'AIzaSyB4sLg6u5Lq6TZz8T9qJ7J7X7Z7X7Z7X7Z',
+        discoveryDocs: ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"],
+    }).then(() => {
         gapiInited = true;
         toggleAuthButton();
-        console.log('Google Drive API initialized');
-    } catch (error) {
-        console.error('Error initializing Google Drive API:', error);
-    }
+    });
 }
 
 function toggleAuthButton() {
     document.getElementById('authButton').disabled = !(gapiInited && gisInited);
 }
 
-// Authentication Flow
+// Authentication
 function handleAuthClick() {
     const tokenClient = google.accounts.oauth2.initTokenClient({
         client_id: '743264679221-omplmhe5mj6vo37dbtk2dgj5vcfv6p4k.apps.googleusercontent.com',
@@ -39,15 +37,12 @@ async function loadDriveFiles() {
     try {
         const response = await gapi.client.drive.files.list({
             q: "mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'",
-            fields: 'files(id,name)',
+            fields: 'files(id,name,modifiedTime)',
             orderBy: 'name'
         });
         
         uploadedFiles = response.result.files || [];
-        // Process each file immediately after loading the list
-        for (const file of uploadedFiles) {
-            await processDriveFile(file.id, file.name);
-        }
+        await processAllFiles();
         updateFileList();
         document.getElementById('fileList').classList.remove('hidden');
     } catch (error) {
@@ -55,18 +50,14 @@ async function loadDriveFiles() {
     }
 }
 
-function updateFileList() {
-    const fileList = document.getElementById('fileList');
-    fileList.innerHTML = '<h3>Google Drive Files:</h3>';
-    uploadedFiles.forEach((file, index) => {
-        const fileItem = document.createElement('div');
-        fileItem.className = 'file-item';
-        fileItem.textContent = `${index + 1}: ${file.name}`;
-        fileList.appendChild(fileItem);
-    });
+async function processAllFiles() {
+    const processingPromises = uploadedFiles.map(file => 
+        processDriveFile(file.id, file.name)
+    );
+    await Promise.all(processingPromises);
 }
 
-// Excel File Processing (Corrected Date Handling)
+// Excel Processing
 async function processDriveFile(fileId, fileName) {
     try {
         const response = await gapi.client.drive.files.get({
@@ -75,35 +66,45 @@ async function processDriveFile(fileId, fileName) {
         }, { responseType: 'arraybuffer' });
 
         const data = new Uint8Array(response.body);
-        const workbook = XLSX.read(data, { type: 'array', cellDates: true });
-        
+        const workbook = XLSX.read(data, {
+            type: 'array',
+            cellDates: true,
+            cellText: false,
+            dense: true
+        });
+
         const allData = [];
         workbook.SheetNames.forEach(sheetName => {
             const worksheet = workbook.Sheets[sheetName];
-            const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
-            allData.push(...rows);
+            const jsonData = XLSX.utils.sheet_to_json(worksheet, {
+                header: 1,
+                defval: '',
+                blankrows: false
+            });
+            allData.push(...jsonData);
         });
 
-        fileData[fileName] = allData.filter(row => row.some(cell => cell !== ''));
-        console.log(`Processed ${fileName} data:`, fileData[fileName]);
+        fileData[fileName] = allData.filter(row => 
+            row.some(cell => cell !== '' && cell !== null)
+        );
     } catch (error) {
         console.error(`Error processing ${fileName}:`, error);
         fileData[fileName] = [];
     }
 }
 
-// Search Functionality (Using Preprocessed Data)
 function formatCellValue(cell) {
     if (typeof cell === 'number') {
-        // Check if it's a valid Excel date
-        const jsDate = new Date((cell - 25569) * 86400000);
-        if (!isNaN(jsDate.getTime())) {
-            return jsDate.toLocaleDateString();
+        if (cell > 25568) { // Excel date threshold
+            const date = new Date((cell - 25569) * 86400000);
+            return isNaN(date) ? cell : date.toLocaleDateString();
         }
+        return cell.toString().replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1,'); // Format numbers
     }
-    return String(cell).trim();
+    return cell;
 }
 
+// Search Functionality
 async function executeSearch() {
     const searchTerm = document.getElementById('searchInput').value.trim();
     const resultContainer = document.getElementById('resultContainer');
@@ -116,26 +117,27 @@ async function executeSearch() {
 
     try {
         let found = false;
-        const cleanSearch = searchTerm.replace(/[^0-9]/g, '');
-        const searchVariants = new Set([
-            cleanSearch,
-            `'${cleanSearch}'`, // Excel might store numbers as text with leading '
-            searchTerm
-        ]);
-
-        console.log(`Searching for variants:`, [...searchVariants]);
+        const normalizedSearch = searchTerm.replace(/[^0-9]/g, '');
 
         for (const file of uploadedFiles) {
             const sheetData = fileData[file.name] || [];
-            console.log(`Searching in ${file.name} (${sheetData.length} rows)`);
-
             for (const [rowIndex, row] of sheetData.entries()) {
-                const rowValues = row.map(cell => formatCellValue(cell));
-                if (rowValues.some(value => searchVariants.has(value))) {
-                    const formattedRow = row.map(cell => formatCellValue(cell));
+                const stringRow = row.map(cell => {
+                    if (typeof cell === 'number') {
+                        if (cell > 25568) {
+                            const date = new Date((cell - 25569) * 86400000);
+                            return isNaN(date) ? cell.toString() : date.toLocaleDateString();
+                        }
+                        return cell.toString();
+                    }
+                    return String(cell).trim().replace(/^'+|'+$/g, '');
+                });
+
+                if (stringRow.some(cell => cell.includes(normalizedSearch))) {
+                    const formattedRow = row.map(formatCellValue);
                     resultContainer.innerHTML += 
                         `<div class="result">
-                            Match found in ${file.name} (Row ${rowIndex + 1}): 
+                            Match found in ${file.name} (Row ${rowIndex + 1}):<br>
                             ${formattedRow.join(' | ')}
                         </div>`;
                     found = true;
@@ -148,8 +150,7 @@ async function executeSearch() {
         if (!found) {
             resultContainer.innerHTML = 
                 `<div class="no-result">
-                    No matches found for "${searchTerm}"<br>
-                    Search variants tried: ${[...searchVariants].join(', ')}
+                    No matches found for "${searchTerm}"
                 </div>`;
         }
     } catch (error) {
@@ -165,5 +166,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
     document.getElementById('authButton').addEventListener('click', handleAuthClick);
     document.getElementById('searchButton').addEventListener('click', executeSearch);
-    document.getElementById('refreshButton').addEventListener('click', loadDriveFiles);
+    document.getElementById('refreshButton').addEventListener('click', () => {
+        uploadedFiles = [];
+        fileData = {};
+        loadDriveFiles();
+    });
 });
