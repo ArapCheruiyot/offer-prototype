@@ -7,7 +7,7 @@ let gisInited = false;
 async function initializeGapiClient() {
     try {
         await gapi.client.init({
-            apiKey: 'YOUR_API_KEY',
+            apiKey: '',
             discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
         });
         gapiInited = true;
@@ -25,7 +25,7 @@ function toggleAuthButton() {
 // Authentication Flow
 function handleAuthClick() {
     const tokenClient = google.accounts.oauth2.initTokenClient({
-        client_id: 'YOUR_CLIENT_ID.apps.googleusercontent.com',
+        client_id: '743264679221-omplmhe5mj6vo37dbtk2dgj5vcfv6p4k.apps.googleusercontent.com',
         scope: 'https://www.googleapis.com/auth/drive.readonly',
         callback: async (response) => {
             if (response.error) return;
