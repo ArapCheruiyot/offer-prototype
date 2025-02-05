@@ -11,6 +11,7 @@ function authenticate() {
             alert('Authentication was not completed. Please try again and complete the sign-in process.');
         } else {
             console.error('Authentication error', error);
+            alert('Authentication failed. Please check the console for more details.');
         }
     });
 }
@@ -49,7 +50,10 @@ function initClient() {
         gapi.auth2.getAuthInstance().isSignedIn.listen(updateSigninStatus);
         updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get());
         gapiLoaded = true;
-    }).catch(error => console.error('Client initialization error', error));
+    }).catch(error => {
+        console.error('Client initialization error', error);
+        alert('Initialization failed. Please check the console for more details.');
+    });
 }
 
 function updateSigninStatus(isSignedIn) {
