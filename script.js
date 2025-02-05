@@ -41,7 +41,7 @@ function loadGapi() {
 
 function initClient() {
     gapi.client.init({
-        apiKey: 'YOUR_API_KEY',
+        apiKey: 'AIzaSyDHq4fEuTe89LxuR04vjV8REJA7-N6nwIQ',
         clientId: '743264679221-omplmhe5mj6vo37dbtk2dgj5vcfv6p4k.apps.googleusercontent.com',
         discoveryDocs: ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"],
         scope: 'https://www.googleapis.com/auth/drive.readonly'
