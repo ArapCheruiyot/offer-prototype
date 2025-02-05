@@ -1,26 +1,29 @@
 let gapiLoaded = false;
 
 function authenticate() {
+    console.log('Authentication process started');
     gapi.auth2.getAuthInstance().signIn().then(() => {
         console.log('Sign-in successful');
         listFiles();
         document.getElementById('fileList').classList.remove('hidden');
         document.getElementById('refreshButton').classList.remove('hidden');
     }).catch(error => {
+        console.error('Authentication error', error);
         if (error.error === 'popup_closed_by_user') {
             alert('Authentication was not completed. Please try again and complete the sign-in process.');
         } else {
-            console.error('Authentication error', error);
             alert('Authentication failed. Please check the console for more details.');
         }
     });
 }
 
 function listFiles() {
+    console.log('Listing files');
     gapi.client.drive.files.list({
         pageSize: 10,
         fields: "nextPageToken, files(id, name, mimeType)"
     }).then(function(response) {
+        console.log('Files listed', response);
         const files = response.result.files;
         const fileListUl = document.getElementById('fileListUl');
         fileListUl.innerHTML = '';
@@ -33,20 +36,25 @@ function listFiles() {
         } else {
             fileListUl.innerHTML = '<li>No files found.</li>';
         }
-    }).catch(error => console.error('Error listing files', error));
+    }).catch(error => {
+        console.error('Error listing files', error);
+    });
 }
 
 function loadGapi() {
+    console.log('Loading Google API');
     gapi.load('client:auth2', initClient);
 }
 
 function initClient() {
+    console.log('Initializing Google API client');
     gapi.client.init({
-        apiKey: 'AIzaSyDHq4fEuTe89LxuR04vjV8REJA7-N6nwIQ',
-        clientId: '743264679221-omplmhe5mj6vo37dbtk2dgj5vcfv6p4k.apps.googleusercontent.com',
+        apiKey: 'YOUR_API_KEY',
+        clientId: '702193482694-s6vv5ahntnhnqsmvlo14g2j6febir86g.apps.googleusercontent.com',
         discoveryDocs: ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"],
         scope: 'https://www.googleapis.com/auth/drive.readonly'
     }).then(function () {
+        console.log('Google API client initialized');
         gapi.auth2.getAuthInstance().isSignedIn.listen(updateSigninStatus);
         updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get());
         gapiLoaded = true;
@@ -57,6 +65,7 @@ function initClient() {
 }
 
 function updateSigninStatus(isSignedIn) {
+    console.log('Updating sign-in status', isSignedIn);
     if (isSignedIn) {
         document.getElementById('authButton').style.display = 'none';
         listFiles();
