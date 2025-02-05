@@ -1,114 +1,109 @@
-let gapiLoaded = false;
+let tokenClient;
+let gapiInited = false;
+let gisInited = false;
 
-function authenticate() {
-    console.log('Authentication process started');
-    gapi.auth2.getAuthInstance().signIn().then(() => {
-        console.log('Sign-in successful');
-        listFiles();
-        document.getElementById('fileList').classList.remove('hidden');
-        document.getElementById('refreshButton').classList.remove('hidden');
-    }).catch(error => {
-        console.error('Authentication error', error);
-        if (error.error === 'popup_closed_by_user') {
-            alert('Authentication was not completed. Please try again and complete the sign-in process.');
-        } else {
-            alert('Authentication failed. Please check the console for more details.');
-        }
-    });
+// Client ID and API key from the Developer Console
+const CLIENT_ID = '534160681000-2c5jtro940cnvd7on62jf022f52h8pfu.apps.googleusercontent.com';
+const API_KEY = 'YOUR_API_KEY';
+
+// Array of API discovery doc URLs for APIs used by the script
+const DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"];
+
+// Authorization scopes required by the API; multiple scopes can be
+// included, separated by spaces.
+const SCOPES = 'https://www.googleapis.com/auth/drive.readonly';
+
+function gapiLoaded() {
+  gapi.load('client', initializeGapiClient);
 }
 
-function listFiles() {
-    console.log('Listing files');
-    gapi.client.drive.files.list({
-        pageSize: 10,
-        fields: "nextPageToken, files(id, name, mimeType)"
-    }).then(function(response) {
-        console.log('Files listed', response);
-        const files = response.result.files;
-        const fileListUl = document.getElementById('fileListUl');
-        fileListUl.innerHTML = '';
-        if (files && files.length > 0) {
-            files.forEach(function(file) {
-                const li = document.createElement('li');
-                li.textContent = `${file.name} (${file.id})`;
-                fileListUl.appendChild(li);
-            });
-        } else {
-            fileListUl.innerHTML = '<li>No files found.</li>';
-        }
-    }).catch(error => {
-        console.error('Error listing files', error);
-    });
+async function initializeGapiClient() {
+  await gapi.client.init({
+    apiKey: API_KEY,
+    discoveryDocs: DISCOVERY_DOCS,
+  });
+  gapiInited = true;
+  maybeEnableButtons();
 }
 
-function loadGapi() {
-    console.log('Loading Google API');
-    gapi.load('client:auth2', initClient);
+function gisLoaded() {
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID,
+    scope: SCOPES,
+    callback: '', // defined later
+  });
+  gisInited = true;
+  maybeEnableButtons();
 }
 
-function initClient() {
-    console.log('Initializing Google API client');
-    gapi.client.init({
-        apiKey: 'YOUR_API_KEY',
-        clientId: '702193482694-s6vv5ahntnhnqsmvlo14g2j6febir86g.apps.googleusercontent.com',
-        discoveryDocs: ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"],
-        scope: 'https://www.googleapis.com/auth/drive.readonly'
-    }).then(function () {
-        console.log('Google API client initialized');
-        gapi.auth2.getAuthInstance().isSignedIn.listen(updateSigninStatus);
-        updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get());
-        gapiLoaded = true;
-    }).catch(error => {
-        console.error('Client initialization error', error);
-        alert('Initialization failed. Please check the console for more details.');
-    });
+function maybeEnableButtons() {
+  if (gapiInited && gisInited) {
+    document.getElementById('authButton').disabled = false;
+  }
 }
 
-function updateSigninStatus(isSignedIn) {
-    console.log('Updating sign-in status', isSignedIn);
-    if (isSignedIn) {
-        document.getElementById('authButton').style.display = 'none';
-        listFiles();
-    } else {
-        document.getElementById('authButton').style.display = 'block';
+document.getElementById('authButton').addEventListener('click', () => {
+  tokenClient.callback = async (resp) => {
+    if (resp.error !== undefined) {
+      throw (resp);
     }
-}
+    document.getElementById('authButton').style.display = 'none';
+    document.getElementById('fileList').classList.remove('hidden');
+    await listFiles();
+  };
 
-function searchFiles() {
-    const searchTerm = document.getElementById('searchInput').value;
-    const fileListUl = document.getElementById('fileListUl');
-    if (!fileListUl) {
-        console.error('File list element not found');
-        return;
-    }
-    const files = fileListUl.getElementsByTagName('li');
-    Array.from(files).forEach(fileItem => {
-        const fileId = fileItem.textContent.split('(')[1].replace(')', '').trim();
-        gapi.client.drive.files.get({
-            fileId: fileId,
-            alt: 'media'
-        }).then(response => {
-            const workbook = XLSX.read(new Uint8Array(response.body), { type: 'array' });
-            const sheetName = workbook.SheetNames[0];
-            const worksheet = workbook.Sheets[sheetName];
-            const data = XLSX.utils.sheet_to_json(worksheet);
+  if (gapi.client.getToken() === null) {
+    // Prompt the user to select a Google Account and ask for consent to share their data
+    tokenClient.requestAccessToken({prompt: 'consent'});
+  } else {
+    // Skip display of account chooser and consent dialog for an existing token
+    tokenClient.requestAccessToken({prompt: ''});
+  }
+});
 
-            const results = data.filter(row => {
-                return Object.values(row).some(cell => String(cell).includes(searchTerm));
-            });
-
-            if (results.length > 0) {
-                document.getElementById('resultContainer').innerHTML = `<h3>Results in ${fileItem.textContent}</h3><pre>${JSON.stringify(results, null, 2)}</pre>`;
-            } else {
-                document.getElementById('resultContainer').innerHTML = `<p>No results found in ${fileItem.textContent}</p>`;
-            }
-        }).catch(error => console.error('Error reading file:', error));
+async function listFiles() {
+  let response;
+  try {
+    response = await gapi.client.drive.files.list({
+      'pageSize': 10,
+      'fields': 'files(id, name)',
     });
+  } catch (err) {
+    console.log(err.message);
+    return;
+  }
+  const files = response.result.files;
+  if (files && files.length > 0) {
+    const fileList = document.getElementById('fileListUl');
+    fileList.innerHTML = '';
+    files.forEach((file) => {
+      const li = document.createElement('li');
+      li.textContent = `${file.name} (${file.id})`;
+      fileList.appendChild(li);
+    });
+  } else {
+    console.log('No files found.');
+  }
 }
 
-document.getElementById('authButton').addEventListener('click', authenticate);
-document.getElementById('searchButton').addEventListener('click', searchFiles);
-document.getElementById('refreshButton').addEventListener('click', listFiles);
+document.getElementById('searchButton').addEventListener('click', async () => {
+  const searchInput = document.getElementById('searchInput').value.trim();
+  const response = await gapi.client.drive.files.list({
+    'pageSize': 10,
+    'fields': 'files(id, name)',
+  });
+  const resultContainer = document.getElementById('resultContainer');
+  resultContainer.innerHTML = '';
 
-// Load the Google API library
-loadGapi();
+  for (const file of response.result.files) {
+    const fileResponse = await gapi.client.drive.files.get({
+      fileId: file.id,
+      alt: 'media',
+    });
+    const data = new Uint8Array(fileResponse.body);
+    const workbook = XLSX.read(data, {type: 'array'});
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+    const json = XLSX.utils.sheet_to_json(sheet);
+
+    const found = json.find(row => row.CustomerNumber === searchInput
