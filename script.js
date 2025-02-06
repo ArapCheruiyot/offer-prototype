@@ -1,89 +1,79 @@
-let tokenClient;
-let gapiLoaded = false;
-let gisLoaded = false;
-
-// Load the Google API client
-function initializeGapiClient() {
-    gapi.client.init({}).then(() => {
-        gapi.client.load('https://content.googleapis.com/discovery/v1/apis/drive/v3/rest')
-            .then(() => {
-                gapiLoaded = true;
-                enableAuthButton();
+// 1️⃣ Google Authentication (Already in place)
+function authenticateGoogle() {
+    gapi.load("client:auth2", () => {
+        gapi.client.init({
+            clientId: "534160681000-2c5jtro940cnvd7on62jf022f52h8pfu.apps.googleusercontent.com",
+            scope: "https://www.googleapis.com/auth/drive.readonly",
+            discoveryDocs: ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"],
+        }).then(() => {
+            gapi.auth2.getAuthInstance().signIn().then(() => {
+                document.getElementById("authButton").textContent = "Authenticated ✅";
+                alert("✅ Login successful!");
             });
+        }).catch(error => console.error("Authentication failed", error));
     });
 }
 
-// Enable authentication button when APIs are ready
-function enableAuthButton() {
-    if (gapiLoaded && gisLoaded) {
-        document.getElementById("authButton").disabled = false;
+document.getElementById("authButton").addEventListener("click", authenticateGoogle);
+
+// 2️⃣ Paste the "List & Load Excel Files" Code Here 👇
+async function listExcelFiles() {
+    try {
+        const response = await gapi.client.drive.files.list({
+            q: "mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' or mimeType='application/vnd.ms-excel'",
+            fields: "files(id, name)",
+        });
+
+        const files = response.result.files;
+        if (!files || files.length === 0) {
+            alert("No Excel files found in Google Drive.");
+            return;
+        }
+
+        document.getElementById("fileList").classList.remove("hidden");
+        const fileListUl = document.getElementById("fileListUl");
+        fileListUl.innerHTML = ""; // Clear previous results
+
+        window.preloadedFiles = {}; // Reset preloaded files
+
+        for (const file of files) {
+            const listItem = document.createElement("li");
+            listItem.textContent = `📂 ${file.name} - ⏳ Loading...`;
+            fileListUl.appendChild(listItem);
+
+            try {
+                await loadExcelFile(file.id, file.name);
+                listItem.textContent = `📂 ${file.name} - ✅ Loaded Successfully`;
+            } catch (error) {
+                listItem.textContent = `📂 ${file.name} - ❌ Failed to Load`;
+            }
+        }
+
+        alert("✅ All available Excel files have been processed.");
+    } catch (error) {
+        console.error("Error fetching Excel files:", error);
+        alert("❌ Failed to fetch Excel files. Check console for details.");
     }
 }
 
-// Handle Google OAuth authentication
-function authenticate() {
-    tokenClient.requestAccessToken();
-}
-
-// Initialize Google Identity Services (GIS) OAuth 2.0
-function initGis() {
-    tokenClient = google.accounts.oauth2.initTokenClient({
-        client_id: "534160681000-2c5jtro940cnvd7on62jf022f52h8pfu.apps.googleusercontent.com",
-        scope: "https://www.googleapis.com/auth/drive.readonly",
-        callback: (response) => {
-            if (response.error) {
-                console.error("Authentication failed:", response);
-                alert("Authentication failed! Please try again.");
-                return;
-            }
-            
-            console.log("Authentication successful!");
-            document.getElementById("authButton").textContent = "Authenticated";
-            document.getElementById("authButton").disabled = true;
-
-            // Show success message
-            const messageDiv = document.createElement("div");
-            messageDiv.id = "successMessage";
-            messageDiv.textContent = "✅ Login Successful!";
-            messageDiv.style.color = "green";
-            messageDiv.style.marginTop = "10px";
-
-            document.querySelector(".container").appendChild(messageDiv);
-
-            // List Excel files
-            listExcelFiles();
-        }
-    });
-    gisLoaded = true;
-    enableAuthButton();
-}
-
-// List Excel files in the user's Google Drive
-function listExcelFiles() {
-    gapi.client.drive.files.list({
-        'pageSize': 10,
-        'fields': 'nextPageToken, files(id, name, mimeType)',
-        'q': "mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' or mimeType='application/vnd.ms-excel'"
-    }).then((response) => {
-        const files = response.result.files;
-        const fileListUl = document.getElementById('fileListUl');
-        fileListUl.innerHTML = '';
-
-        if (files && files.length > 0) {
-            files.forEach((file) => {
-                const li = document.createElement('li');
-                li.textContent = `${file.name} (${file.id})`;
-                fileListUl.appendChild(li);
+async function loadExcelFile(fileId, fileName) {
+    return new Promise(async (resolve, reject) => {
+        try {
+            const response = await gapi.client.drive.files.get({
+                fileId: fileId,
+                alt: "media",
             });
-        } else {
-            fileListUl.innerHTML = 'No Excel files found.';
+
+            const workbook = XLSX.read(response.body, { type: "array" });
+            window.preloadedFiles[fileName] = workbook;
+            console.log(`✅ Successfully loaded: ${fileName}`);
+            resolve(); // Success
+        } catch (error) {
+            console.error(`❌ Error loading ${fileName}:`, error);
+            reject(error); // Failure
         }
     });
 }
 
-// Initialize everything when the page loads
-document.addEventListener("DOMContentLoaded", () => {
-    gapi.load("client", initializeGapiClient);
-    initGis();
-    document.getElementById("authButton").addEventListener("click", authenticate);
-});
+// 3️⃣ Attach the File Loading to "Refresh Button"
+document.getElementById("refreshButton").addEventListener("click", listExcelFiles);
