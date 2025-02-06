@@ -1,42 +1,63 @@
-// Load the Google API client library
-function loadGapiClient() {
-    gapi.load('client:auth2', initClient);
-}
+let tokenClient;
+let gapiLoaded = false;
+let gisLoaded = false;
 
-// Initialize the Google API client library
-function initClient() {
-    gapi.client.init({
-        apiKey: 'YOUR_API_KEY',
-        clientId: 'YOUR_CLIENT_ID',
-        discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
-        scope: 'https://www.googleapis.com/auth/drive.readonly'
-    }).then(() => {
-        // Handle the initial sign-in state.
-        updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get());
-
-        // Attach sign-in handler to button.
-        document.getElementById('authButton').onclick = handleAuthClick;
+// Load the Google API client
+function initializeGapiClient() {
+    gapi.client.init({}).then(() => {
+        gapi.client.load('https://content.googleapis.com/discovery/v1/apis/drive/v3/rest')
+            .then(() => {
+                gapiLoaded = true;
+                enableAuthButton();
+            });
     });
 }
 
-// Update the UI based on sign-in status
-function updateSigninStatus(isSignedIn) {
-    const statusMessage = document.getElementById('resultContainer');
-    if (isSignedIn) {
-        // User is signed in.
-        statusMessage.innerHTML = 'Authentication successful!';
-    } else {
-        // User is not signed in.
-        statusMessage.innerHTML = 'Please sign in to authenticate.';
+// Enable authentication button when APIs are ready
+function enableAuthButton() {
+    if (gapiLoaded && gisLoaded) {
+        document.getElementById("authButton").disabled = false;
     }
 }
 
-// Handle the sign-in button click
-function handleAuthClick(event) {
-    gapi.auth2.getAuthInstance().signIn().then(() => {
-        updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get());
-    });
+// Handle Google OAuth authentication
+function authenticate() {
+    tokenClient.requestAccessToken();
 }
 
-// Load the API client and auth library
-gapi.load('client:auth2', loadGapiClient);
+// Initialize Google Identity Services (GIS) OAuth 2.0
+function initGis() {
+    tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: "534160681000-2c5jtro940cnvd7on62jf022f52h8pfu.apps.googleusercontent.com",
+        scope: "https://www.googleapis.com/auth/drive.readonly",
+        callback: (response) => {
+            if (response.error) {
+                console.error("Authentication failed:", response);
+                alert("Authentication failed! Please try again.");
+                return;
+            }
+            
+            console.log("Authentication successful!");
+            document.getElementById("authButton").textContent = "Authenticated";
+            document.getElementById("authButton").disabled = true;
+
+            // Show success message
+            const messageDiv = document.createElement("div");
+            messageDiv.id = "successMessage";
+            messageDiv.textContent = "✅ Login Successful!";
+            messageDiv.style.color = "green";
+            messageDiv.style.marginTop = "10px";
+
+            document.querySelector(".container").appendChild(messageDiv);
+        }
+    });
+    gisLoaded = true;
+    enableAuthButton();
+}
+
+// Initialize everything when the page loads
+document.addEventListener("DOMContentLoaded", () => {
+    gapi.load("client", initializeGapiClient);
+    initGis();
+    document.getElementById("authButton").addEventListener("click", authenticate);
+});
