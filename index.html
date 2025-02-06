@@ -3,42 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Google Drive Authentication</title>
-
-    <!-- Google APIs & OAuth -->
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <title>Google Drive Offer Search</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+    <script src="https://accounts.google.com/gsi/client"></script>
     <script src="https://apis.google.com/js/api.js"></script>
-
-    <!-- Basic Styles -->
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            margin: 50px;
-        }
-        .container {
-            max-width: 400px;
-            margin: auto;
-            padding: 20px;
-            border: 1px solid #ddd;
-            border-radius: 10px;
-            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
-        }
-        button {
-            padding: 10px;
-            font-size: 16px;
-            cursor: pointer;
-            margin-top: 10px;
-        }
-    </style>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://apis.google.com https://accounts.google.com https://cdnjs.cloudflare.com; connect-src 'self' https://www.googleapis.com; img-src 'self' data:; style-src 'self' 'unsafe-inline'">
 </head>
 <body>
     <div class="container">
-        <h2>Google Drive Authentication</h2>
-        <button id="authButton" disabled>Connect Google Drive</button>
-        <div id="successMessage"></div>
-    </div>
+        <h2>Customer Offer Search</h2>
+        <button id="authButton">Connect Google Drive</button>
+        
+        <div class="file-list hidden" id="fileList">
+            <h3>Google Drive Files:</h3>
+            <ul id="fileListUl"></ul>
+        </div>
 
+        <input type="text" id="searchInput" placeholder="Enter customer number">
+        <button id="searchButton">Search</button>
+        
+        <div id="resultContainer"></div>
+        <button id="refreshButton" class="hidden">Refresh File List</button>
+    </div>
     <script src="script.js"></script>
 </body>
 </html>
