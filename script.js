@@ -28,7 +28,7 @@ function authenticate() {
 // Initialize Google Identity Services (GIS) OAuth 2.0
 function initGis() {
     tokenClient = google.accounts.oauth2.initTokenClient({
-        client_id: "534160681000-2c5jtro940cnvd7on62jf022f52h8pfu.apps.googleusercontent.com",
+        client_id: "YOUR_CLIENT_ID",
         scope: "https://www.googleapis.com/auth/drive.readonly",
         callback: (response) => {
             if (response.error) {
@@ -49,10 +49,36 @@ function initGis() {
             messageDiv.style.marginTop = "10px";
 
             document.querySelector(".container").appendChild(messageDiv);
+
+            // List Excel files
+            listExcelFiles();
         }
     });
     gisLoaded = true;
     enableAuthButton();
+}
+
+// List Excel files in the user's Google Drive
+function listExcelFiles() {
+    gapi.client.drive.files.list({
+        'pageSize': 10,
+        'fields': 'nextPageToken, files(id, name, mimeType)',
+        'q': "mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' or mimeType='application/vnd.ms-excel'"
+    }).then((response) => {
+        const files = response.result.files;
+        const fileListUl = document.getElementById('fileListUl');
+        fileListUl.innerHTML = '';
+
+        if (files && files.length > 0) {
+            files.forEach((file) => {
+                const li = document.createElement('li');
+                li.textContent = `${file.name} (${file.id})`;
+                fileListUl.appendChild(li);
+            });
+        } else {
+            fileListUl.innerHTML = 'No Excel files found.';
+        }
+    });
 }
 
 // Initialize everything when the page loads
