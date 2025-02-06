@@ -1,109 +1,42 @@
-let tokenClient;
-let gapiInited = false;
-let gisInited = false;
-
-// Client ID and API key from the Developer Console
-const CLIENT_ID = '534160681000-2c5jtro940cnvd7on62jf022f52h8pfu.apps.googleusercontent.com';
-const API_KEY = 'YOUR_API_KEY';
-
-// Array of API discovery doc URLs for APIs used by the script
-const DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"];
-
-// Authorization scopes required by the API; multiple scopes can be
-// included, separated by spaces.
-const SCOPES = 'https://www.googleapis.com/auth/drive.readonly';
-
-function gapiLoaded() {
-  gapi.load('client', initializeGapiClient);
+// Load the Google API client library
+function loadGapiClient() {
+    gapi.load('client:auth2', initClient);
 }
 
-async function initializeGapiClient() {
-  await gapi.client.init({
-    apiKey: API_KEY,
-    discoveryDocs: DISCOVERY_DOCS,
-  });
-  gapiInited = true;
-  maybeEnableButtons();
+// Initialize the Google API client library
+function initClient() {
+    gapi.client.init({
+        apiKey: 'YOUR_API_KEY',
+        clientId: 'YOUR_CLIENT_ID',
+        discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
+        scope: 'https://www.googleapis.com/auth/drive.readonly'
+    }).then(() => {
+        // Handle the initial sign-in state.
+        updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get());
+
+        // Attach sign-in handler to button.
+        document.getElementById('authButton').onclick = handleAuthClick;
+    });
 }
 
-function gisLoaded() {
-  tokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: CLIENT_ID,
-    scope: SCOPES,
-    callback: '', // defined later
-  });
-  gisInited = true;
-  maybeEnableButtons();
-}
-
-function maybeEnableButtons() {
-  if (gapiInited && gisInited) {
-    document.getElementById('authButton').disabled = false;
-  }
-}
-
-document.getElementById('authButton').addEventListener('click', () => {
-  tokenClient.callback = async (resp) => {
-    if (resp.error !== undefined) {
-      throw (resp);
+// Update the UI based on sign-in status
+function updateSigninStatus(isSignedIn) {
+    const statusMessage = document.getElementById('resultContainer');
+    if (isSignedIn) {
+        // User is signed in.
+        statusMessage.innerHTML = 'Authentication successful!';
+    } else {
+        // User is not signed in.
+        statusMessage.innerHTML = 'Please sign in to authenticate.';
     }
-    document.getElementById('authButton').style.display = 'none';
-    document.getElementById('fileList').classList.remove('hidden');
-    await listFiles();
-  };
-
-  if (gapi.client.getToken() === null) {
-    // Prompt the user to select a Google Account and ask for consent to share their data
-    tokenClient.requestAccessToken({prompt: 'consent'});
-  } else {
-    // Skip display of account chooser and consent dialog for an existing token
-    tokenClient.requestAccessToken({prompt: ''});
-  }
-});
-
-async function listFiles() {
-  let response;
-  try {
-    response = await gapi.client.drive.files.list({
-      'pageSize': 10,
-      'fields': 'files(id, name)',
-    });
-  } catch (err) {
-    console.log(err.message);
-    return;
-  }
-  const files = response.result.files;
-  if (files && files.length > 0) {
-    const fileList = document.getElementById('fileListUl');
-    fileList.innerHTML = '';
-    files.forEach((file) => {
-      const li = document.createElement('li');
-      li.textContent = `${file.name} (${file.id})`;
-      fileList.appendChild(li);
-    });
-  } else {
-    console.log('No files found.');
-  }
 }
 
-document.getElementById('searchButton').addEventListener('click', async () => {
-  const searchInput = document.getElementById('searchInput').value.trim();
-  const response = await gapi.client.drive.files.list({
-    'pageSize': 10,
-    'fields': 'files(id, name)',
-  });
-  const resultContainer = document.getElementById('resultContainer');
-  resultContainer.innerHTML = '';
-
-  for (const file of response.result.files) {
-    const fileResponse = await gapi.client.drive.files.get({
-      fileId: file.id,
-      alt: 'media',
+// Handle the sign-in button click
+function handleAuthClick(event) {
+    gapi.auth2.getAuthInstance().signIn().then(() => {
+        updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get());
     });
-    const data = new Uint8Array(fileResponse.body);
-    const workbook = XLSX.read(data, {type: 'array'});
-    const sheetName = workbook.SheetNames[0];
-    const sheet = workbook.Sheets[sheetName];
-    const json = XLSX.utils.sheet_to_json(sheet);
+}
 
-    const found = json.find(row => row.CustomerNumber === searchInput
+// Load the API client and auth library
+gapi.load('client:auth2', loadGapiClient);
