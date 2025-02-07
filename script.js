@@ -4,11 +4,14 @@ let gisLoaded = false;
 
 // Load the Google API client
 function initializeGapiClient() {
-    gapi.client.load('https://content.googleapis.com/discovery/v1/apis/drive/v3/rest')
-        .then(() => {
+    gapi.load("client", () => {
+        gapi.client.init({
+            discoveryDocs: ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"],
+        }).then(() => {
             gapiLoaded = true;
             enableAuthButton();
         });
+    });
 }
 
 // Enable authentication button when APIs are ready
@@ -20,7 +23,7 @@ function enableAuthButton() {
 
 // Handle Google OAuth authentication
 function authenticate() {
-    tokenClient.requestAccessToken();
+    tokenClient.requestAccessToken({ prompt: "consent" });
 }
 
 // Initialize Google Identity Services (GIS) OAuth 2.0
@@ -54,3 +57,17 @@ function initGis() {
     gisLoaded = true;
     enableAuthButton();
 }
+
+// Load the Google Identity Services client asynchronously
+function loadGisClient() {
+    const script = document.createElement("script");
+    script.src = "https://accounts.google.com/gsi/client";
+    script.onload = initGis;
+    document.head.appendChild(script);
+}
+
+// Load both clients when the window loads
+window.onload = function() {
+    loadGisClient();
+    initializeGapiClient();
+};
