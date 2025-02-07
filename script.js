@@ -111,9 +111,11 @@ function listFiles() {
 function downloadFile(fileId, callback) {
     console.log("Downloading file with ID:", fileId);
     gapi.client.drive.files.get({
-        fileId: fileId,
-        alt: 'media'
-    }).then(function(response) {
+    fileId: fileId,
+    alt: 'media',
+    supportsAllDrives: true
+})
+.then(function(response) {
         fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
             headers: {
                 'Authorization': `Bearer ${gapi.auth.getToken().access_token}`
