@@ -68,17 +68,61 @@ function listFiles() {
         'q': "mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' or mimeType='application/vnd.ms-excel'"
     }).then(function(response) {
         var files = response.result.files;
+        var fileListElement = document.getElementById('fileList');
+        fileListElement.innerHTML = '';
+
         if (files && files.length > 0) {
-            console.log('Excel Files:');
             files.forEach(function(file) {
-                console.log(file.name + ' (' + file.id + ')');
+                var fileItem = document.createElement('div');
+                fileItem.textContent = file.name;
+                fileItem.setAttribute('data-file-id', file.id);
+                fileItem.addEventListener('click', function() {
+                    var fileId = fileItem.getAttribute('data-file-id');
+                    downloadFile(fileId, function(workbook) {
+                        var searchTerm = document.getElementById('searchInput').value;
+                        searchInFile(workbook, searchTerm);
+                    });
+                });
+                fileListElement.appendChild(fileItem);
             });
         } else {
-            console.log('No Excel files found.');
+            fileListElement.textContent = 'No Excel files found.';
         }
     });
 }
 
+// Download an Excel file and read its contents
+function downloadFile(fileId, callback) {
+    gapi.client.drive.files.get({
+        fileId: fileId,
+        alt: 'media'
+    }).then(function(response) {
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            var data = new Uint8Array(e.target.result);
+            var workbook = XLSX.read(data, {type: 'array'});
+            callback(workbook);
+        };
+        var blob = new Blob([response.body], {type: 'application/octet-stream'});
+        reader.readAsArrayBuffer(blob);
+    });
+}
+
+// Process the downloaded file and search for an account number
+function searchInFile(workbook, searchTerm) {
+    var sheetName = workbook.SheetNames[0];
+    var sheet = workbook.Sheets[sheetName];
+    var json = XLSX.utils.sheet_to_json(sheet);
+
+    for (var i = 0; i < json.length; i++) {
+        if (json[i]['Account Number'] && json[i]['Account Number'].toString() === searchTerm) {
+            console.log('Found matching record: ', json[i]);
+            return true;
+        }
+    }
+    console.log('No matching record found.');
+    return false;
+}
 
 // Initialize everything when the page loads
 document.addEventListener("DOMContentLoaded", () => {
