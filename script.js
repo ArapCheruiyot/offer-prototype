@@ -33,6 +33,7 @@ function authenticate() {
 
 // Initialize Google Identity Services (GIS) OAuth 2.0
 function initGis() {
+    console.log("Initializing GIS...");
     tokenClient = google.accounts.oauth2.initTokenClient({
         client_id: "534160681000-2c5jtro940cnvd7on62jf022f52h8pfu.apps.googleusercontent.com",
         scope: "https://www.googleapis.com/auth/drive.readonly",
@@ -86,8 +87,10 @@ function listFiles() {
                 fileItem.setAttribute('data-file-id', file.id);
                 fileItem.addEventListener('click', function() {
                     var fileId = fileItem.getAttribute('data-file-id');
+                    console.log("File clicked:", fileId);
                     downloadFile(fileId, function(workbook) {
                         var searchTerm = document.getElementById('searchInput').value;
+                        console.log("Searching in file:", fileId);
                         searchInFile(workbook, searchTerm);
                     });
                 });
