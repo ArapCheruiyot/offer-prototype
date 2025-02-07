@@ -103,30 +103,38 @@ function listFiles() {
 }
 
 // Asynchronously download and process Excel files
-async function downloadAndIndexFile(fileId) {
-    if (fileLoaded) {
-        console.log("✅ File already loaded, skipping download.");
-        return;
-    }
+async function processFiles(fileList, searchTerm) {
+    let resultContainer = document.getElementById('resultContainer');
+    resultContainer.innerHTML = '';
 
-    try {
-        let workbook = await downloadFileAsync(fileId);
-        indexFile(workbook);  // Index the data ONCE
-    } catch (error) {
-        console.error("Error loading file:", error);
+    for (let fileItem of fileList) {
+        let fileId = fileItem.getAttribute('data-file-id');
+        console.log("Downloading and searching in file:", fileId);
+
+        try {
+            let workbook = await downloadFileAsync(fileId);
+            let found = searchInFile(workbook, searchTerm);
+
+            if (found) {
+                console.log('Search complete.');
+                break;
+            }
+        } catch (error) {
+            console.error("Error processing file:", error);
+        }
     }
 }
 
 // Convert downloadFile to return a Promise
 function downloadFileAsync(fileId) {
     return new Promise((resolve, reject) => {
-        fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+        fetch(https://www.googleapis.com/drive/v3/files/${fileId}?alt=media, {
             headers: {
-                'Authorization': `Bearer ${gapi.auth.getToken().access_token}`
+                'Authorization': Bearer ${gapi.auth.getToken().access_token}
             }
         })
         .then(res => {
-            if (!res.ok) throw new Error(`Network response was not ok: ${res.statusText}`);
+            if (!res.ok) throw new Error(Network response was not ok: ${res.statusText});
             return res.blob();
         })
         .then(blob => {
@@ -152,55 +160,36 @@ function downloadFileAsync(fileId) {
     });
 }
 
-
- // Global variable to store indexed data
-let indexedData = {};  
-
-// Process the downloaded file and index data for fast lookup
-function indexFile(workbook) {
-    console.log("Indexing data for faster search...");
+// Process the downloaded file and search for an account number
+function searchInFile(workbook, searchTerm) {
+    console.log("Searching for term:", searchTerm);
     let sheetName = workbook.SheetNames[0];
     let sheet = workbook.Sheets[sheetName];
     let json = XLSX.utils.sheet_to_json(sheet);
 
-    json.forEach(row => {
-        for (let key in row) {
-            let value = row[key]?.toString(); // Convert values to string for consistency
-            if (value) {
-                indexedData[value] = row; // Store entire row with the key being the searchable value
+    console.log("JSON data from Excel file:", json);
+
+    let found = false;
+    for (let i = 0; i < json.length; i++) {
+        for (let key in json[i]) {
+            console.log(Checking cell [${key}]:, json[i][key]);
+            if (json[i][key] && json[i][key].toString() === searchTerm) {
+                console.log('Found matching record:', json[i]);
+                document.getElementById('resultContainer').innerHTML = 'Found matching record: ' + JSON.stringify(json[i]);
+                found = true;
+                break;
             }
         }
-    });
-
-    console.log("Data indexing complete! Ready for instant search.");
-}
-
-// Search using the indexed data (INSTANT lookup)
-function searchInIndexedData(searchTerm) {
-    console.log("Searching for:", searchTerm);
-    
-    if (!fileLoaded) {
-        document.getElementById('resultContainer').innerHTML = "⚠️ Please select a file first!";
-        return;
+        if (found) break;
     }
 
-    let result = indexedData[searchTerm];
-    if (result) {
-        console.log('✅ Found:', result);
-        document.getElementById('resultContainer').innerHTML = '✅ Found: ' + JSON.stringify(result);
-    } else {
-        console.log('❌ Not found.');
-        document.getElementById('resultContainer').innerHTML = '❌ No record found.';
+    if (!found) {
+        console.log('No matching record found.');
+        document.getElementById('resultContainer').innerHTML = 'No matching record found.';
     }
+
+    return found;
 }
-
-
-// Modify the search button to use the indexed data
-document.getElementById("searchButton").addEventListener("click", function () {
-    let searchTerm = document.getElementById("searchInput").value;
-    searchInIndexedData(searchTerm);
-});
-
 
 // Initialize everything when the page loads
 document.addEventListener("DOMContentLoaded", () => {
