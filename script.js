@@ -9,8 +9,7 @@ function initializeGapiClient() {
             .then(() => {
                 gapiLoaded = true;
                 enableAuthButton();
-            })
-            .catch(error => console.error("Error loading Google Drive API:", error));
+            });
     });
 }
 
