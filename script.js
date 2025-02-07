@@ -36,7 +36,7 @@ function initGis() {
                 alert("Authentication failed! Please try again.");
                 return;
             }
-            
+
             console.log("Authentication successful!");
             document.getElementById("authButton").textContent = "Authenticated";
             document.getElementById("authButton").disabled = true;
@@ -49,6 +49,11 @@ function initGis() {
             messageDiv.style.marginTop = "10px";
 
             document.querySelector(".container").appendChild(messageDiv);
+
+            // Call listFiles after successful authentication
+            if (gapiLoaded && gisLoaded) {
+                listFiles();
+            }
         }
     });
     gisLoaded = true;
@@ -77,10 +82,5 @@ function listFiles() {
 document.addEventListener("DOMContentLoaded", () => {
     gapi.load("client", initializeGapiClient);
     initGis();
-    document.getElementById("authButton").addEventListener("click", function() {
-        authenticate();
-        if (gapiLoaded && gisLoaded) {
-            listFiles();
-        }
-    });
+    document.getElementById("authButton").addEventListener("click", authenticate);
 });
