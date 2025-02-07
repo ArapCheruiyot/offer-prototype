@@ -150,4 +150,19 @@ document.addEventListener("DOMContentLoaded", () => {
     gapi.load("client", initializeGapiClient);
     initGis();
     document.getElementById("authButton").addEventListener("click", authenticate);
+
+    // Add event listener for search button
+    document.getElementById("searchButton").addEventListener("click", function() {
+        var searchTerm = document.getElementById("searchInput").value;
+        console.log("Searching for:", searchTerm);
+
+        // You may need to adjust this part based on your code structure
+        var fileList = document.querySelectorAll('#fileList div');
+        fileList.forEach(function(fileItem) {
+            var fileId = fileItem.getAttribute('data-file-id');
+            downloadFile(fileId, function(workbook) {
+                searchInFile(workbook, searchTerm);
+            });
+        });
+    });
 });
