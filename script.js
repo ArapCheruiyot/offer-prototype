@@ -102,41 +102,61 @@ function listFiles() {
     }).catch(error => console.error("Error listing files:", error));
 }
 
-// Download an Excel file and read its contents
-function downloadFile(fileId, callback) {
-    console.log("Downloading file with ID:", fileId);
-    fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
-        headers: {
-            'Authorization': `Bearer ${gapi.auth.getToken().access_token}`
-        }
-    })
-    .then(res => {
-        if (!res.ok) throw new Error(`Network response was not ok: ${res.statusText}`);
-        return res.blob();
-    })
-    .then(blob => {
-        if (blob.size === 0) {
-            throw new Error("Downloaded file is empty.");
-        }
+// Asynchronously download and process Excel files
+async function processFiles(fileList, searchTerm) {
+    let resultContainer = document.getElementById('resultContainer');
+    resultContainer.innerHTML = '';
 
-        let reader = new FileReader();
-        reader.onload = function(e) {
-            try {
-                let workbook = XLSX.read(e.target.result, { type: 'array' });
-                if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
-                    throw new Error("Invalid Excel file format.");
-                }
-                callback(workbook);
-            } catch (error) {
-                console.error("Error reading Excel file:", error);
-                alert("Error reading Excel file: " + error.message);
+    for (let fileItem of fileList) {
+        let fileId = fileItem.getAttribute('data-file-id');
+        console.log("Downloading and searching in file:", fileId);
+
+        try {
+            let workbook = await downloadFileAsync(fileId);
+            let found = searchInFile(workbook, searchTerm);
+
+            if (found) {
+                console.log('Search complete.');
+                break;
             }
-        };
-        reader.readAsArrayBuffer(blob);
-    })
-    .catch(error => {
-        console.error("Error fetching file:", error);
-        alert("Error fetching file: " + error.message);
+        } catch (error) {
+            console.error("Error processing file:", error);
+        }
+    }
+}
+
+// Convert downloadFile to return a Promise
+function downloadFileAsync(fileId) {
+    return new Promise((resolve, reject) => {
+        fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+            headers: {
+                'Authorization': `Bearer ${gapi.auth.getToken().access_token}`
+            }
+        })
+        .then(res => {
+            if (!res.ok) throw new Error(`Network response was not ok: ${res.statusText}`);
+            return res.blob();
+        })
+        .then(blob => {
+            if (blob.size === 0) {
+                throw new Error("Downloaded file is empty.");
+            }
+
+            let reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    let workbook = XLSX.read(e.target.result, { type: 'array' });
+                    if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
+                        throw new Error("Invalid Excel file format.");
+                    }
+                    resolve(workbook);
+                } catch (error) {
+                    reject(error);
+                }
+            };
+            reader.readAsArrayBuffer(blob);
+        })
+        .catch(error => reject(error));
     });
 }
 
@@ -152,8 +172,9 @@ function searchInFile(workbook, searchTerm) {
     let found = false;
     for (let i = 0; i < json.length; i++) {
         for (let key in json[i]) {
+            console.log(`Checking cell [${key}]:`, json[i][key]);
             if (json[i][key] && json[i][key].toString() === searchTerm) {
-                console.log('Found matching record: ', json[i]);
+                console.log('Found matching record:', json[i]);
                 document.getElementById('resultContainer').innerHTML = 'Found matching record: ' + JSON.stringify(json[i]);
                 found = true;
                 break;
@@ -166,6 +187,8 @@ function searchInFile(workbook, searchTerm) {
         console.log('No matching record found.');
         document.getElementById('resultContainer').innerHTML = 'No matching record found.';
     }
+
+    return found;
 }
 
 // Initialize everything when the page loads
@@ -181,11 +204,6 @@ document.addEventListener("DOMContentLoaded", () => {
         console.log("Searching for:", searchTerm);
 
         let fileList = document.querySelectorAll('#fileList div');
-        fileList.forEach(function(fileItem) {
-            let fileId = fileItem.getAttribute('data-file-id');
-            downloadFile(fileId, function(workbook) {
-                searchInFile(workbook, searchTerm);
-            });
-        });
+        processFiles(fileList, searchTerm);
     });
 });
