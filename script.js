@@ -103,25 +103,17 @@ function listFiles() {
 }
 
 // Asynchronously download and process Excel files
-async function processFiles(fileList, searchTerm) {
-    let resultContainer = document.getElementById('resultContainer');
-    resultContainer.innerHTML = '';
+async function downloadAndIndexFile(fileId) {
+    if (fileLoaded) {
+        console.log("✅ File already loaded, skipping download.");
+        return;
+    }
 
-    for (let fileItem of fileList) {
-        let fileId = fileItem.getAttribute('data-file-id');
-        console.log("Downloading and searching in file:", fileId);
-
-        try {
-            let workbook = await downloadFileAsync(fileId);
-            let found = searchInFile(workbook, searchTerm);
-
-            if (found) {
-                console.log('Search complete.');
-                break;
-            }
-        } catch (error) {
-            console.error("Error processing file:", error);
-        }
+    try {
+        let workbook = await downloadFileAsync(fileId);
+        indexFile(workbook);  // Index the data ONCE
+    } catch (error) {
+        console.error("Error loading file:", error);
     }
 }
 
@@ -185,30 +177,28 @@ function indexFile(workbook) {
 
 // Search using the indexed data (INSTANT lookup)
 function searchInIndexedData(searchTerm) {
-    console.log("Searching in indexed data:", searchTerm);
+    console.log("Searching for:", searchTerm);
     
-    if (indexedData[searchTerm]) {
-        console.log('✅ Found matching record:', indexedData[searchTerm]);
-        document.getElementById('resultContainer').innerHTML =
-            '✅ Found matching record: ' + JSON.stringify(indexedData[searchTerm]);
+    if (!fileLoaded) {
+        document.getElementById('resultContainer').innerHTML = "⚠️ Please select a file first!";
+        return;
+    }
+
+    let result = indexedData[searchTerm];
+    if (result) {
+        console.log('✅ Found:', result);
+        document.getElementById('resultContainer').innerHTML = '✅ Found: ' + JSON.stringify(result);
     } else {
-        console.log('❌ No matching record found.');
-        document.getElementById('resultContainer').innerHTML = '❌ No matching record found.';
+        console.log('❌ Not found.');
+        document.getElementById('resultContainer').innerHTML = '❌ No record found.';
     }
 }
 
-// Load and index data on file click (only once per file)
-function downloadAndIndexFile(fileId) {
-    downloadFileAsync(fileId).then(workbook => {
-        indexFile(workbook);  // Index the file after downloading
-    }).catch(error => console.error("Error indexing file:", error));
-}
 
 // Modify the search button to use the indexed data
-document.getElementById("searchButton").addEventListener("click", function() {
+document.getElementById("searchButton").addEventListener("click", function () {
     let searchTerm = document.getElementById("searchInput").value;
-    console.log("Searching for:", searchTerm);
-    searchInIndexedData(searchTerm);  // Use the indexed data for instant lookup
+    searchInIndexedData(searchTerm);
 });
 
 
