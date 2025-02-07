@@ -79,6 +79,9 @@ function listFiles() {
         var fileListElement = document.getElementById('fileList');
         fileListElement.innerHTML = '';
 
+        // Ensure the fileList element is visible
+        fileListElement.classList.remove('hidden');
+
         if (files && files.length > 0) {
             console.log('Excel Files:');
             files.forEach(function(file) {
@@ -132,10 +135,12 @@ function searchInFile(workbook, searchTerm) {
     for (var i = 0; i < json.length; i++) {
         if (json[i]['Account Number'] && json[i]['Account Number'].toString() === searchTerm) {
             console.log('Found matching record: ', json[i]);
+            document.getElementById('resultContainer').innerHTML = 'Found matching record: ' + JSON.stringify(json[i]);
             return true;
         }
     }
     console.log('No matching record found.');
+    document.getElementById('resultContainer').innerHTML = 'No matching record found.';
     return false;
 }
 
