@@ -64,19 +64,21 @@ function initGis() {
 function listFiles() {
     gapi.client.drive.files.list({
         'pageSize': 10, // Number of files to retrieve
-        'fields': "nextPageToken, files(id, name)" // File ID and name
+        'fields': "nextPageToken, files(id, name)", // File ID and name
+        'q': "mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' or mimeType='application/vnd.ms-excel'"
     }).then(function(response) {
         var files = response.result.files;
         if (files && files.length > 0) {
-            console.log('Files:');
+            console.log('Excel Files:');
             files.forEach(function(file) {
                 console.log(file.name + ' (' + file.id + ')');
             });
         } else {
-            console.log('No files found.');
+            console.log('No Excel files found.');
         }
     });
 }
+
 
 // Initialize everything when the page loads
 document.addEventListener("DOMContentLoaded", () => {
