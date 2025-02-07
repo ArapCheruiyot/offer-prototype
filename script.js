@@ -128,13 +128,13 @@ async function processFiles(fileList, searchTerm) {
 // Convert downloadFile to return a Promise
 function downloadFileAsync(fileId) {
     return new Promise((resolve, reject) => {
-        fetch(https://www.googleapis.com/drive/v3/files/${fileId}?alt=media, {
+        fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
             headers: {
-                'Authorization': Bearer ${gapi.auth.getToken().access_token}
+                'Authorization': `Bearer ${gapi.auth.getToken().access_token}`
             }
         })
         .then(res => {
-            if (!res.ok) throw new Error(Network response was not ok: ${res.statusText});
+            if (!res.ok) throw new Error(`Network response was not ok: ${res.statusText}`);
             return res.blob();
         })
         .then(blob => {
@@ -172,7 +172,7 @@ function searchInFile(workbook, searchTerm) {
     let found = false;
     for (let i = 0; i < json.length; i++) {
         for (let key in json[i]) {
-            console.log(Checking cell [${key}]:, json[i][key]);
+            console.log(`Checking cell [${key}]:`, json[i][key]);
             if (json[i][key] && json[i][key].toString() === searchTerm) {
                 console.log('Found matching record:', json[i]);
                 document.getElementById('resultContainer').innerHTML = 'Found matching record: ' + JSON.stringify(json[i]);
