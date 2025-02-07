@@ -4,13 +4,13 @@ let gisLoaded = false;
 
 // Load the Google API client
 function initializeGapiClient() {
-    gapi.load("client", () => {
-        gapi.client.init({
-            discoveryDocs: ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"],
-        }).then(() => {
-            gapiLoaded = true;
-            enableAuthButton();
-        });
+    gapi.client.init({}).then(() => {
+        gapi.client.load('https://content.googleapis.com/discovery/v1/apis/drive/v3/rest')
+            .then(() => {
+                gapiLoaded = true;
+                enableAuthButton();
+            })
+            .catch(error => console.error("Error loading Google Drive API:", error));
     });
 }
 
@@ -23,13 +23,13 @@ function enableAuthButton() {
 
 // Handle Google OAuth authentication
 function authenticate() {
-    tokenClient.requestAccessToken({ prompt: "consent" });
+    tokenClient.requestAccessToken();
 }
 
 // Initialize Google Identity Services (GIS) OAuth 2.0
 function initGis() {
     tokenClient = google.accounts.oauth2.initTokenClient({
-        client_id: "534160681000-2c5jtro940cnvd7on62jf022f52h8pfu.apps.googleusercontent.com",
+        client_id: "YOUR_CLIENT_ID",
         scope: "https://www.googleapis.com/auth/drive.readonly",
         callback: (response) => {
             if (response.error) {
@@ -48,26 +48,17 @@ function initGis() {
             messageDiv.textContent = "✅ Login Successful!";
             messageDiv.style.color = "green";
             messageDiv.style.marginTop = "10px";
-            document.querySelector(".container").appendChild(messageDiv);
 
-            // Now proceed to list files
-            listFiles();
+            document.querySelector(".container").appendChild(messageDiv);
         }
     });
     gisLoaded = true;
     enableAuthButton();
 }
 
-// Load the Google Identity Services client asynchronously
-function loadGisClient() {
-    const script = document.createElement("script");
-    script.src = "https://accounts.google.com/gsi/client";
-    script.onload = initGis;
-    document.head.appendChild(script);
-}
-
-// Load both clients when the window loads
-window.onload = function() {
-    loadGisClient();
-    initializeGapiClient();
-};
+// Initialize everything when the page loads
+document.addEventListener("DOMContentLoaded", () => {
+    gapi.load("client", initializeGapiClient);
+    initGis();
+    document.getElementById("authButton").addEventListener("click", authenticate);
+});
