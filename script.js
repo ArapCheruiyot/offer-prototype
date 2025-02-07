@@ -55,9 +55,32 @@ function initGis() {
     enableAuthButton();
 }
 
+// List files in Google Drive
+function listFiles() {
+    gapi.client.drive.files.list({
+        'pageSize': 10, // Number of files to retrieve
+        'fields': "nextPageToken, files(id, name)" // File ID and name
+    }).then(function(response) {
+        var files = response.result.files;
+        if (files && files.length > 0) {
+            console.log('Files:');
+            files.forEach(function(file) {
+                console.log(file.name + ' (' + file.id + ')');
+            });
+        } else {
+            console.log('No files found.');
+        }
+    });
+}
+
 // Initialize everything when the page loads
 document.addEventListener("DOMContentLoaded", () => {
     gapi.load("client", initializeGapiClient);
     initGis();
-    document.getElementById("authButton").addEventListener("click", authenticate);
+    document.getElementById("authButton").addEventListener("click", function() {
+        authenticate();
+        if (gapiLoaded && gisLoaded) {
+            listFiles();
+        }
+    });
 });
