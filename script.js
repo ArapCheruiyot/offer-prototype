@@ -1,17 +1,14 @@
 let tokenClient;
 let gapiLoaded = false;
 let gisLoaded = false;
-let filesData = [];
 
 // Load the Google API client
 function initializeGapiClient() {
-    gapi.client.init({}).then(() => {
-        gapi.client.load('https://content.googleapis.com/discovery/v1/apis/drive/v3/rest')
-            .then(() => {
-                gapiLoaded = true;
-                enableAuthButton();
-            });
-    });
+    gapi.client.load('https://content.googleapis.com/discovery/v1/apis/drive/v3/rest')
+        .then(() => {
+            gapiLoaded = true;
+            enableAuthButton();
+        });
 }
 
 // Enable authentication button when APIs are ready
@@ -57,4 +54,3 @@ function initGis() {
     gisLoaded = true;
     enableAuthButton();
 }
-
