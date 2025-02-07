@@ -4,28 +4,27 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Google Drive Offer Search</title>
-    <link rel="stylesheet" href="styles.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
     <script src="https://accounts.google.com/gsi/client"></script>
     <script src="https://apis.google.com/js/api.js"></script>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="container">
         <h2>Customer Offer Search</h2>
-        <button id="authButton" class="btn">🔗 Connect Google Drive</button>
+        <button id="authButton">Authenticate Google Drive</button>
         
-        <div id="fileList" class="file-list hidden">
-            <h3>📂 Google Drive Files</h3>
-            <ul id="fileListUl"></ul>
+        <div class="file-list hidden" id="fileList">
+            <h3>Google Drive Files:</h3>
         </div>
 
-        <div class="search-section">
-            <input type="text" id="searchInput" placeholder="Enter customer number">
-            <button id="searchButton" class="btn">🔍 Search</button>
-        </div>
+        <input type="text" id="searchInput" placeholder="Enter customer number">
+        <button id="searchButton">Search</button>
         
-        <div id="resultContainer" class="result-container"></div>
+        <div id="resultContainer"></div>
+        <button id="refreshButton" class="hidden">Refresh Files</button>
     </div>
+
     <script src="script.js"></script>
 </body>
 </html>
