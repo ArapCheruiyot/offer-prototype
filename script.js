@@ -18,7 +18,6 @@ function initializeGapiClient() {
 
 // Enable authentication button when APIs are ready
 function enableAuthButton() {
-    console.log("Enabling auth button...");
     if (gapiLoaded && gisLoaded) {
         document.getElementById("authButton").disabled = false;
         console.log("Auth button enabled.");
@@ -48,7 +47,6 @@ function initGis() {
             document.getElementById("authButton").textContent = "Authenticated";
             document.getElementById("authButton").disabled = true;
 
-            // Show success message
             const messageDiv = document.createElement("div");
             messageDiv.id = "successMessage";
             messageDiv.textContent = "✅ Login Successful!";
@@ -56,7 +54,6 @@ function initGis() {
             messageDiv.style.marginTop = "10px";
             document.querySelector(".container").appendChild(messageDiv);
 
-            // Call listFiles after successful authentication
             if (gapiLoaded && gisLoaded) {
                 console.log("Calling listFiles...");
                 listFiles();
@@ -72,33 +69,31 @@ function listFiles() {
     console.log("Listing files...");
     gapi.client.drive.files.list({
         'pageSize': 10,
-        'fields': "nextPageToken, files(id, name)",
-        'q': "mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' or mimeType='application/vnd.ms-excel'"
-    }).then(function(response) {
-        var files = response.result.files;
-        var fileListElement = document.getElementById('fileList');
+        'fields': "nextPageToken, files(id, name, mimeType)",
+        'q': "mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'"
+    }).then(response => {
+        let files = response.result.files;
+        let fileListElement = document.getElementById('fileList');
         fileListElement.innerHTML = '';
 
-        // Ensure the fileList element is visible
         fileListElement.classList.remove('hidden');
 
         if (files && files.length > 0) {
-            console.log('Excel Files:');
-            files.forEach(function(file) {
-                var fileItem = document.createElement('div');
+            console.log('Excel Files:', files);
+            files.forEach(file => {
+                let fileItem = document.createElement('div');
                 fileItem.textContent = file.name;
                 fileItem.setAttribute('data-file-id', file.id);
                 fileItem.addEventListener('click', function() {
-                    var fileId = fileItem.getAttribute('data-file-id');
+                    let fileId = fileItem.getAttribute('data-file-id');
                     console.log("File clicked:", fileId);
                     downloadFile(fileId, function(workbook) {
-                        var searchTerm = document.getElementById('searchInput').value;
+                        let searchTerm = document.getElementById('searchInput').value;
                         console.log("Searching in file:", fileId);
                         searchInFile(workbook, searchTerm);
                     });
                 });
                 fileListElement.appendChild(fileItem);
-                console.log(file.name + ' (' + file.id + ')');
             });
         } else {
             fileListElement.textContent = 'No Excel files found.';
@@ -110,59 +105,62 @@ function listFiles() {
 // Download an Excel file and read its contents
 function downloadFile(fileId, callback) {
     console.log("Downloading file with ID:", fileId);
-    gapi.client.drive.files.get({
-    fileId: fileId,
-    alt: 'media',
-    supportsAllDrives: true
-})
-.then(function(response) {
-        fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
-            headers: {
-                'Authorization': `Bearer ${gapi.auth.getToken().access_token}`
-            }
-        })
-        .then(res => {
-            if (!res.ok) throw new Error(`Network response was not ok: ${res.statusText}`);
-            return res.blob();
-        })
-        .then(blob => {
-            var reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    var data = new Uint8Array(e.target.result);
-                    var workbook = XLSX.read(data, {type: 'array'});
-                    callback(workbook);
-                } catch (error) {
-                    console.error("Error reading Excel file:", error);
-                    alert("Error reading Excel file: " + error.message);
+    fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+        headers: {
+            'Authorization': `Bearer ${gapi.auth.getToken().access_token}`
+        }
+    })
+    .then(res => {
+        if (!res.ok) throw new Error(`Network response was not ok: ${res.statusText}`);
+        return res.blob();
+    })
+    .then(blob => {
+        if (blob.size === 0) {
+            throw new Error("Downloaded file is empty.");
+        }
+
+        let reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                let workbook = XLSX.read(e.target.result, { type: 'array' });
+                if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
+                    throw new Error("Invalid Excel file format.");
                 }
-            };
-            reader.readAsArrayBuffer(blob);
-        })
-        .catch(error => {
-            console.error("Error fetching file:", error);
-            alert("Error fetching file: " + error.message);
-        });
-    }).catch(error => console.error("Error downloading file:", error));
+                callback(workbook);
+            } catch (error) {
+                console.error("Error reading Excel file:", error);
+                alert("Error reading Excel file: " + error.message);
+            }
+        };
+        reader.readAsArrayBuffer(blob);
+    })
+    .catch(error => {
+        console.error("Error fetching file:", error);
+        alert("Error fetching file: " + error.message);
+    });
 }
 
 // Process the downloaded file and search for an account number
 function searchInFile(workbook, searchTerm) {
     console.log("Searching for term:", searchTerm);
-    var sheetName = workbook.SheetNames[0];
-    var sheet = workbook.Sheets[sheetName];
-    var json = XLSX.utils.sheet_to_json(sheet);
+    let sheetName = workbook.SheetNames[0];
+    let sheet = workbook.Sheets[sheetName];
+    let json = XLSX.utils.sheet_to_json(sheet);
 
-    for (var i = 0; i < json.length; i++) {
+    let found = false;
+    for (let i = 0; i < json.length; i++) {
         if (json[i]['Account Number'] && json[i]['Account Number'].toString() === searchTerm) {
             console.log('Found matching record: ', json[i]);
             document.getElementById('resultContainer').innerHTML = 'Found matching record: ' + JSON.stringify(json[i]);
-            return true;
+            found = true;
+            break;
         }
     }
-    console.log('No matching record found.');
-    document.getElementById('resultContainer').innerHTML = 'No matching record found.';
-    return false;
+
+    if (!found) {
+        console.log('No matching record found.');
+        document.getElementById('resultContainer').innerHTML = 'No matching record found.';
+    }
 }
 
 // Initialize everything when the page loads
@@ -174,13 +172,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Add event listener for search button
     document.getElementById("searchButton").addEventListener("click", function() {
-        var searchTerm = document.getElementById("searchInput").value;
+        let searchTerm = document.getElementById("searchInput").value;
         console.log("Searching for:", searchTerm);
 
-        // You may need to adjust this part based on your code structure
-        var fileList = document.querySelectorAll('#fileList div');
+        let fileList = document.querySelectorAll('#fileList div');
         fileList.forEach(function(fileItem) {
-            var fileId = fileItem.getAttribute('data-file-id');
+            let fileId = fileItem.getAttribute('data-file-id');
             downloadFile(fileId, function(workbook) {
                 searchInFile(workbook, searchTerm);
             });
