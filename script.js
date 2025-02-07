@@ -116,9 +116,14 @@ function downloadFile(fileId, callback) {
     }).then(function(response) {
         var reader = new FileReader();
         reader.onload = function(e) {
-            var data = new Uint8Array(e.target.result);
-            var workbook = XLSX.read(data, {type: 'array'});
-            callback(workbook);
+            try {
+                var data = new Uint8Array(e.target.result);
+                var workbook = XLSX.read(data, {type: 'array'});
+                callback(workbook);
+            } catch (error) {
+                console.error("Error reading Excel file:", error);
+                alert("Error reading Excel file: " + error.message);
+            }
         };
         var blob = new Blob([response.body], {type: 'application/octet-stream'});
         reader.readAsArrayBuffer(blob);
