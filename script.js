@@ -28,7 +28,7 @@ function authenticate() {
 // Initialize Google Identity Services (GIS) OAuth 2.0
 function initGis() {
     tokenClient = google.accounts.oauth2.initTokenClient({
-        client_id: "YOUR_CLIENT_ID",
+        client_id: "534160681000-2c5jtro940cnvd7on62jf022f52h8pfu.apps.googleusercontent.com",
         scope: "https://www.googleapis.com/auth/drive.readonly",
         callback: (response) => {
             if (response.error) {
