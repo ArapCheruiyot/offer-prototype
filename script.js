@@ -147,14 +147,19 @@ function searchInFile(workbook, searchTerm) {
     let sheet = workbook.Sheets[sheetName];
     let json = XLSX.utils.sheet_to_json(sheet);
 
+    console.log("JSON data from Excel file:", json);
+
     let found = false;
     for (let i = 0; i < json.length; i++) {
-        if (json[i]['Account Number'] && json[i]['Account Number'].toString() === searchTerm) {
-            console.log('Found matching record: ', json[i]);
-            document.getElementById('resultContainer').innerHTML = 'Found matching record: ' + JSON.stringify(json[i]);
-            found = true;
-            break;
+        for (let key in json[i]) {
+            if (json[i][key] && json[i][key].toString() === searchTerm) {
+                console.log('Found matching record: ', json[i]);
+                document.getElementById('resultContainer').innerHTML = 'Found matching record: ' + JSON.stringify(json[i]);
+                found = true;
+                break;
+            }
         }
+        if (found) break;
     }
 
     if (!found) {
