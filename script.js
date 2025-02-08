@@ -170,12 +170,30 @@ function searchInFile(workbook, searchTerm) {
     console.log("JSON data from Excel file:", json);
 
     let found = false;
+    let resultContainer = document.getElementById('resultContainer');
+    resultContainer.innerHTML = ''; // Clear previous results
+
     for (let i = 0; i < json.length; i++) {
         for (let key in json[i]) {
             console.log(`Checking cell [${key}]:`, json[i][key]);
             if (json[i][key] && json[i][key].toString() === searchTerm) {
                 console.log('Found matching record:', json[i]);
-                document.getElementById('resultContainer').innerHTML = 'Found matching record: ' + JSON.stringify(json[i]);
+
+                // Create a result block
+                let resultItem = document.createElement('div');
+                resultItem.className = 'result-item';
+                for (let field in json[i]) {
+                    let resultLabel = document.createElement('span');
+                    resultLabel.className = 'result-label';
+                    resultLabel.textContent = `${field}: `;
+                    let resultValue = document.createElement('span');
+                    resultValue.textContent = json[i][field];
+                    resultItem.appendChild(resultLabel);
+                    resultItem.appendChild(resultValue);
+                    resultItem.appendChild(document.createElement('br')); // Line break for each field
+                }
+                resultContainer.appendChild(resultItem);
+
                 found = true;
                 break;
             }
@@ -185,11 +203,12 @@ function searchInFile(workbook, searchTerm) {
 
     if (!found) {
         console.log('No matching record found.');
-        document.getElementById('resultContainer').innerHTML = 'No matching record found.';
+        resultContainer.innerHTML = '<div class="result-item">No matching record found.</div>';
     }
 
     return found;
 }
+
 
 // Initialize everything when the page loads
 document.addEventListener("DOMContentLoaded", () => {
