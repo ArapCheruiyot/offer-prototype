@@ -190,7 +190,7 @@ function searchInFile(workbook, searchTerm) {
                     resultValue.textContent = json[i][field];
                     resultItem.appendChild(resultLabel);
                     resultItem.appendChild(resultValue);
-                    resultItem.appendChild(document.createElement('br')); // Line break for each field
+                    resultItem.appendChild(document.createElement('br')); // Line break for each key-value pair
                 }
                 resultContainer.appendChild(resultItem);
 
@@ -209,7 +209,6 @@ function searchInFile(workbook, searchTerm) {
     return found;
 }
 
-
 // Initialize everything when the page loads
 document.addEventListener("DOMContentLoaded", () => {
     console.log("Page loaded. Initializing...");
@@ -218,11 +217,4 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("authButton").addEventListener("click", authenticate);
 
     // Add event listener for search button
-    document.getElementById("searchButton").addEventListener("click", function() {
-        let searchTerm = document.getElementById("searchInput").value;
-        console.log("Searching for:", searchTerm);
-
-        let fileList = document.querySelectorAll('#fileList div');
-        processFiles(fileList, searchTerm);
-    });
-});
+    document.getElementById
