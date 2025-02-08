@@ -160,6 +160,15 @@ function downloadFileAsync(fileId) {
     });
 }
 
+// Function to convert Excel serial date to JavaScript Date
+function excelSerialDateToJSDate(serial) {
+    // Excel considers January 1, 1900 as day 1
+    const excelEpoch = new Date(1899, 11, 30);
+    const msPerDay = 24 * 60 * 60 * 1000;
+    const jsDate = new Date(excelEpoch.getTime() + serial * msPerDay);
+    return jsDate.toLocaleDateString();
+}
+
 // Process the downloaded file and search for an account number
 function searchInFile(workbook, searchTerm) {
     console.log("Searching for term:", searchTerm);
@@ -187,7 +196,14 @@ function searchInFile(workbook, searchTerm) {
                     resultLabel.className = 'result-label';
                     resultLabel.textContent = `${field}: `;
                     let resultValue = document.createElement('span');
-                    resultValue.textContent = json[i][field];
+
+                    // Convert serial dates to readable dates
+                    if (field.toLowerCase().includes('date')) {
+                        resultValue.textContent = excelSerialDateToJSDate(json[i][field]);
+                    } else {
+                        resultValue.textContent = json[i][field];
+                    }
+
                     resultItem.appendChild(resultLabel);
                     resultItem.appendChild(resultValue);
                     resultItem.appendChild(document.createElement('br')); // Line break for each key-value pair
@@ -217,4 +233,11 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("authButton").addEventListener("click", authenticate);
 
     // Add event listener for search button
-    document.getElementById
+    document.getElementById('searchButton').addEventListener('click', function() {
+        let searchTerm = document.getElementById("searchInput").value;
+        console.log("Searching for:", searchTerm);
+
+        let fileList = document.querySelectorAll('#fileList div');
+        processFiles(fileList, searchTerm);
+    });
+});
