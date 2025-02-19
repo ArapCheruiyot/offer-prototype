@@ -147,7 +147,7 @@ async function combineExcelFiles() {
     document.querySelector(".container").appendChild(loadingIndicator);
   }
   loadingIndicator.classList.remove("hidden");
-  
+
   console.log("Combining Excel files...");
   let combinedData = [];
   const fileItems = Array.from(document.querySelectorAll("#fileList div"));
@@ -157,7 +157,7 @@ async function combineExcelFiles() {
     loadingIndicator.classList.add("hidden");
     return;
   }
-  
+
   let processedCount = 0;
   const downloadPromises = fileItems.map((fileItem) => {
     const fileId = fileItem.getAttribute("data-file-id");
@@ -176,7 +176,7 @@ async function combineExcelFiles() {
         return [];
       });
   });
-  
+
   const results = await Promise.all(downloadPromises);
   results.forEach((jsonArray) => {
     combinedData = combinedData.concat(jsonArray);
@@ -207,6 +207,7 @@ function searchInCombinedData(searchTerm) {
     return;
   }
 
+  // For each record, check if any field contains the search term.
   window.combinedData.forEach((record) => {
     for (let key in record) {
       let cellVal = record[key];
@@ -222,11 +223,21 @@ function searchInCombinedData(searchTerm) {
           resultLabel.className = "result-label";
           resultLabel.textContent = `${field}: `;
           let resultValue = document.createElement("span");
-          if (
-            field.toLowerCase().includes("date") &&
-            !isNaN(record[field])
-          ) {
-            resultValue.textContent = excelSerialDateToJSDate(record[field]);
+          // If the field name includes "date", try to convert it:
+          if (field.toLowerCase().includes("date")) {
+            // Try to interpret the value as a number (Excel serial) first
+            let numericVal = parseFloat(record[field]);
+            if (!isNaN(numericVal)) {
+              resultValue.textContent = excelSerialDateToJSDate(numericVal);
+            } else {
+              // Otherwise, try to parse as a regular date string
+              let parsedDate = new Date(record[field]);
+              if (!isNaN(parsedDate.getTime())) {
+                resultValue.textContent = parsedDate.toLocaleDateString();
+              } else {
+                resultValue.textContent = record[field];
+              }
+            }
           } else {
             resultValue.textContent = record[field];
           }
