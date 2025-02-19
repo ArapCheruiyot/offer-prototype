@@ -1,243 +1,271 @@
+// Global variables
 let tokenClient;
 let gapiLoaded = false;
 let gisLoaded = false;
+window.combinedData = null; // Cached combined dataset from all Excel files
 
-// Load the Google API client
+// Initialize the Google API client
 function initializeGapiClient() {
-    console.log("Initializing GAPI client...");
-    gapi.client.init({}).then(() => {
-        gapi.client.load('https://content.googleapis.com/discovery/v1/apis/drive/v3/rest')
-            .then(() => {
-                gapiLoaded = true;
-                console.log("GAPI client loaded.");
-                enableAuthButton();
-            })
-            .catch(error => console.error("Error loading GAPI client:", error));
-    });
+  console.log("Initializing GAPI client...");
+  gapi.client.init({}).then(() => {
+    gapi.client
+      .load("https://content.googleapis.com/discovery/v1/apis/drive/v3/rest")
+      .then(() => {
+        gapiLoaded = true;
+        console.log("GAPI client loaded.");
+        enableAuthButton();
+      })
+      .catch((error) =>
+        console.error("Error loading GAPI client:", error)
+      );
+  });
 }
 
-// Enable authentication button when APIs are ready
+// Enable the authentication button when both APIs are ready
 function enableAuthButton() {
-    if (gapiLoaded && gisLoaded) {
-        document.getElementById("authButton").disabled = false;
-        console.log("Auth button enabled.");
-    }
+  if (gapiLoaded && gisLoaded) {
+    document.getElementById("authButton").disabled = false;
+    console.log("Auth button enabled.");
+  }
 }
 
-// Handle Google OAuth authentication
+// Request an access token via Google Identity Services
 function authenticate() {
-    console.log("Requesting access token...");
-    tokenClient.requestAccessToken();
+  console.log("Requesting access token...");
+  tokenClient.requestAccessToken();
 }
 
 // Initialize Google Identity Services (GIS) OAuth 2.0
 function initGis() {
-    console.log("Initializing GIS...");
-    tokenClient = google.accounts.oauth2.initTokenClient({
-        client_id: "534160681000-2c5jtro940cnvd7on62jf022f52h8pfu.apps.googleusercontent.com",
-        scope: "https://www.googleapis.com/auth/drive.readonly",
-        callback: (response) => {
-            if (response.error) {
-                console.error("Authentication failed:", response);
-                alert("Authentication failed! Please try again.");
-                return;
-            }
-
-            console.log("Authentication successful!");
-            document.getElementById("authButton").textContent = "Authenticated";
-            document.getElementById("authButton").disabled = true;
-
-            const messageDiv = document.createElement("div");
-            messageDiv.id = "successMessage";
-            messageDiv.textContent = "✅ Login Successful!";
-            messageDiv.style.color = "green";
-            messageDiv.style.marginTop = "10px";
-            document.querySelector(".container").appendChild(messageDiv);
-
-            if (gapiLoaded && gisLoaded) {
-                console.log("Calling listFiles...");
-                listFiles();
-            }
-        }
-    });
-    gisLoaded = true;
-    enableAuthButton();
+  console.log("Initializing GIS...");
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id:
+      "534160681000-2c5jtro940cnvd7on62jf022f52h8pfu.apps.googleusercontent.com",
+    scope: "https://www.googleapis.com/auth/drive.readonly",
+    callback: (response) => {
+      if (response.error) {
+        console.error("Authentication failed:", response);
+        alert("Authentication failed! Please try again.");
+        return;
+      }
+      console.log("Authentication successful!");
+      document.getElementById("authButton").textContent = "Authenticated";
+      document.getElementById("authButton").disabled = true;
+      const messageDiv = document.createElement("div");
+      messageDiv.id = "successMessage";
+      messageDiv.textContent = "✅ Login Successful!";
+      messageDiv.style.color = "green";
+      messageDiv.style.marginTop = "10px";
+      document.querySelector(".container").appendChild(messageDiv);
+      if (gapiLoaded && gisLoaded) {
+        console.log("Calling listFiles...");
+        listFiles();
+      }
+    },
+  });
+  gisLoaded = true;
+  enableAuthButton();
 }
 
-// List files in Google Drive
+// List Excel files from Google Drive
 function listFiles() {
-    console.log("Listing files...");
-    gapi.client.drive.files.list({
-        'pageSize': 10,
-        'fields': "nextPageToken, files(id, name, mimeType)",
-        'q': "mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'"
-    }).then(response => {
-        let files = response.result.files;
-        let fileListElement = document.getElementById('fileList');
-        fileListElement.innerHTML = '';
+  console.log("Listing files...");
+  gapi.client.drive.files
+    .list({
+      pageSize: 50,
+      fields: "nextPageToken, files(id, name, mimeType)",
+      q: "mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'",
+    })
+    .then((response) => {
+      let files = response.result.files;
+      let fileListElement = document.getElementById("fileList");
+      fileListElement.innerHTML = "<h3>Google Drive Excel Files:</h3>";
+      fileListElement.classList.remove("hidden");
 
-        fileListElement.classList.remove('hidden');
-
-        if (files && files.length > 0) {
-            console.log('Excel Files:', files);
-            files.forEach(file => {
-                let fileItem = document.createElement('div');
-                fileItem.textContent = file.name;
-                fileItem.setAttribute('data-file-id', file.id);
-                fileItem.addEventListener('click', function() {
-                    let fileId = fileItem.getAttribute('data-file-id');
-                    console.log("File clicked:", fileId);
-                    downloadFile(fileId, function(workbook) {
-                        let searchTerm = document.getElementById('searchInput').value;
-                        console.log("Searching in file:", fileId);
-                        searchInFile(workbook, searchTerm);
-                    });
-                });
-                fileListElement.appendChild(fileItem);
-            });
-        } else {
-            fileListElement.textContent = 'No Excel files found.';
-            console.log('No Excel files found.');
-        }
-    }).catch(error => console.error("Error listing files:", error));
+      if (files && files.length > 0) {
+        console.log("Excel Files:", files);
+        files.forEach((file) => {
+          let fileItem = document.createElement("div");
+          fileItem.textContent = file.name;
+          fileItem.setAttribute("data-file-id", file.id);
+          fileListElement.appendChild(fileItem);
+        });
+        // Show refresh button to combine files
+        document.getElementById("refreshButton").classList.remove("hidden");
+      } else {
+        fileListElement.textContent = "No Excel files found.";
+        console.log("No Excel files found.");
+      }
+    })
+    .catch((error) => console.error("Error listing files:", error));
 }
 
-// Asynchronously download and process Excel files
-async function processFiles(fileList, searchTerm) {
-    let resultContainer = document.getElementById('resultContainer');
-    resultContainer.innerHTML = '';
-
-    for (let fileItem of fileList) {
-        let fileId = fileItem.getAttribute('data-file-id');
-        console.log("Downloading and searching in file:", fileId);
-
-        try {
-            let workbook = await downloadFileAsync(fileId);
-            let found = searchInFile(workbook, searchTerm);
-
-            if (found) {
-                console.log('Search complete.');
-                break;
-            }
-        } catch (error) {
-            console.error("Error processing file:", error);
-        }
-    }
-}
-
-// Convert downloadFile to return a Promise
+// Download an Excel file and return a Promise that resolves with the workbook
 function downloadFileAsync(fileId) {
-    return new Promise((resolve, reject) => {
-        fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
-            headers: {
-                'Authorization': `Bearer ${gapi.auth.getToken().access_token}`
-            }
-        })
-        .then(res => {
-            if (!res.ok) throw new Error(`Network response was not ok: ${res.statusText}`);
-            return res.blob();
-        })
-        .then(blob => {
-            if (blob.size === 0) {
-                throw new Error("Downloaded file is empty.");
-            }
-
-            let reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    let workbook = XLSX.read(e.target.result, { type: 'array' });
-                    if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
-                        throw new Error("Invalid Excel file format.");
-                    }
-                    resolve(workbook);
-                } catch (error) {
-                    reject(error);
-                }
-            };
-            reader.readAsArrayBuffer(blob);
-        })
-        .catch(error => reject(error));
-    });
-}
-
-// Function to convert Excel serial date to JavaScript Date
-function excelSerialDateToJSDate(serial) {
-    // Excel considers January 1, 1900 as day 1
-    const excelEpoch = new Date(1899, 11, 30);
-    const msPerDay = 24 * 60 * 60 * 1000;
-    const jsDate = new Date(excelEpoch.getTime() + serial * msPerDay);
-    return jsDate.toLocaleDateString();
-}
-
-// Process the downloaded file and search for an account number
-function searchInFile(workbook, searchTerm) {
-    console.log("Searching for term:", searchTerm);
-    let sheetName = workbook.SheetNames[0];
-    let sheet = workbook.Sheets[sheetName];
-    let json = XLSX.utils.sheet_to_json(sheet);
-
-    console.log("JSON data from Excel file:", json);
-
-    let found = false;
-    let resultContainer = document.getElementById('resultContainer');
-    resultContainer.innerHTML = ''; // Clear previous results
-
-    for (let i = 0; i < json.length; i++) {
-        for (let key in json[i]) {
-            console.log(`Checking cell [${key}]:`, json[i][key]);
-            if (json[i][key] && json[i][key].toString() === searchTerm) {
-                console.log('Found matching record:', json[i]);
-
-                // Create a result block
-                let resultItem = document.createElement('div');
-                resultItem.className = 'result-item';
-                for (let field in json[i]) {
-                    let resultLabel = document.createElement('span');
-                    resultLabel.className = 'result-label';
-                    resultLabel.textContent = `${field}: `;
-                    let resultValue = document.createElement('span');
-
-                    // Convert serial dates to readable dates
-                    if (field.toLowerCase().includes('date')) {
-                        resultValue.textContent = excelSerialDateToJSDate(json[i][field]);
-                    } else {
-                        resultValue.textContent = json[i][field];
-                    }
-
-                    resultItem.appendChild(resultLabel);
-                    resultItem.appendChild(resultValue);
-                    resultItem.appendChild(document.createElement('br')); // Line break for each key-value pair
-                }
-                resultContainer.appendChild(resultItem);
-
-                found = true;
-                break;
-            }
+  return new Promise((resolve, reject) => {
+    fetch(
+      `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+      {
+        headers: {
+          Authorization: `Bearer ${gapi.auth.getToken().access_token}`,
+        },
+      }
+    )
+      .then((res) => {
+        if (!res.ok)
+          throw new Error(`Network response was not ok: ${res.statusText}`);
+        return res.blob();
+      })
+      .then((blob) => {
+        if (blob.size === 0) {
+          throw new Error("Downloaded file is empty.");
         }
-        if (found) break;
-    }
+        let reader = new FileReader();
+        reader.onload = function (e) {
+          try {
+            let workbook = XLSX.read(e.target.result, { type: "array" });
+            if (
+              !workbook.SheetNames ||
+              workbook.SheetNames.length === 0
+            ) {
+              throw new Error("Invalid Excel file format.");
+            }
+            resolve(workbook);
+          } catch (error) {
+            reject(error);
+          }
+        };
+        reader.readAsArrayBuffer(blob);
+      })
+      .catch((error) => reject(error));
+  });
+}
 
-    if (!found) {
-        console.log('No matching record found.');
-        resultContainer.innerHTML = '<div class="result-item">No matching record found.</div>';
-    }
+// Combine all Excel files into one dataset (an array of records)
+async function combineExcelFiles() {
+  console.log("Combining Excel files...");
+  let combinedData = [];
+  let fileList = document.querySelectorAll("#fileList div");
+  if (!fileList || fileList.length === 0) {
+    alert(
+      "No files to combine. Make sure you are authenticated and files are listed."
+    );
+    return;
+  }
+  const downloadPromises = Array.from(fileList).map((fileItem) => {
+    const fileId = fileItem.getAttribute("data-file-id");
+    console.log("Downloading file for combine:", fileId);
+    return downloadFileAsync(fileId)
+      .then((workbook) => {
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        const json = XLSX.utils.sheet_to_json(sheet);
+        return json;
+      })
+      .catch((error) => {
+        console.error("Error processing file:", error);
+        return [];
+      });
+  });
+  const results = await Promise.all(downloadPromises);
+  results.forEach((jsonArray) => {
+    combinedData = combinedData.concat(jsonArray);
+  });
+  window.combinedData = combinedData; // Cache the combined data
+  console.log("Combined data ready. Total records:", combinedData.length);
+  alert("Files refreshed and combined successfully!");
+}
 
-    return found;
+// Convert an Excel serial date to a JavaScript date string
+function excelSerialDateToJSDate(serial) {
+  const excelEpoch = new Date(1899, 11, 30);
+  const msPerDay = 24 * 60 * 60 * 1000;
+  const jsDate = new Date(excelEpoch.getTime() + serial * msPerDay);
+  return jsDate.toLocaleDateString();
+}
+
+// Search for the term in the combined dataset (case-insensitive, partial match)
+function searchInCombinedData(searchTerm) {
+  console.log("Searching in combined data for:", searchTerm);
+  const resultContainer = document.getElementById("resultContainer");
+  resultContainer.innerHTML = "";
+  let found = false;
+
+  if (!window.combinedData || window.combinedData.length === 0) {
+    resultContainer.innerHTML =
+      '<div class="result-item">No data available. Please refresh the files first.</div>';
+    return;
+  }
+
+  window.combinedData.forEach((record) => {
+    for (let key in record) {
+      let cellVal = record[key];
+      if (
+        cellVal &&
+        cellVal.toString().toLowerCase().includes(searchTerm.toLowerCase())
+      ) {
+        // Create a result block for this record
+        let resultItem = document.createElement("div");
+        resultItem.className = "result-item";
+        for (let field in record) {
+          let resultLabel = document.createElement("span");
+          resultLabel.className = "result-label";
+          resultLabel.textContent = `${field}: `;
+          let resultValue = document.createElement("span");
+          // If the field name contains 'date' and the value is numeric, convert it
+          if (
+            field.toLowerCase().includes("date") &&
+            !isNaN(cellVal)
+          ) {
+            resultValue.textContent = excelSerialDateToJSDate(
+              record[field]
+            );
+          } else {
+            resultValue.textContent = record[field];
+          }
+          resultItem.appendChild(resultLabel);
+          resultItem.appendChild(resultValue);
+          resultItem.appendChild(document.createElement("br"));
+        }
+        resultContainer.appendChild(resultItem);
+        found = true;
+        break; // Stop checking other fields for this record
+      }
+    }
+  });
+
+  if (!found) {
+    resultContainer.innerHTML =
+      '<div class="result-item">No matching record found.</div>';
+  }
 }
 
 // Initialize everything when the page loads
 document.addEventListener("DOMContentLoaded", () => {
-    console.log("Page loaded. Initializing...");
-    gapi.load("client", initializeGapiClient);
-    initGis();
-    document.getElementById("authButton").addEventListener("click", authenticate);
+  console.log("Page loaded. Initializing...");
+  gapi.load("client", initializeGapiClient);
+  initGis();
 
-    // Add event listener for search button
-    document.getElementById('searchButton').addEventListener('click', function() {
-        let searchTerm = document.getElementById("searchInput").value;
-        console.log("Searching for:", searchTerm);
+  document
+    .getElementById("authButton")
+    .addEventListener("click", authenticate);
 
-        let fileList = document.querySelectorAll('#fileList div');
-        processFiles(fileList, searchTerm);
+  // When "Refresh Files" is clicked, combine all Excel files into one dataset
+  document
+    .getElementById("refreshButton")
+    .addEventListener("click", combineExcelFiles);
+
+  // When "Search" is clicked, search the combined dataset
+  document
+    .getElementById("searchButton")
+    .addEventListener("click", () => {
+      const searchTerm = document
+        .getElementById("searchInput")
+        .value.trim();
+      if (!searchTerm) {
+        alert("Please enter a search term.");
+        return;
+      }
+      searchInCombinedData(searchTerm);
     });
 });
