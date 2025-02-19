@@ -139,43 +139,44 @@ function downloadFileAsync(fileId) {
 
 // Combine all Excel files into one dataset (an array of records)
 async function combineExcelFiles() {
-  // Safeguard: Ensure the loading indicator exists.
+  // Get the loading indicator element (create if not present)
   let loadingIndicator = document.getElementById("loadingIndicator");
   if (!loadingIndicator) {
     loadingIndicator = document.createElement("div");
     loadingIndicator.id = "loadingIndicator";
-    loadingIndicator.textContent =
-      "Loading and combining files, please wait...";
     document.querySelector(".container").appendChild(loadingIndicator);
   }
-  loadingIndicator.textContent = "Loading and combining files, please wait...";
   loadingIndicator.classList.remove("hidden");
-
+  
   console.log("Combining Excel files...");
   let combinedData = [];
-  let fileList = document.querySelectorAll("#fileList div");
-  if (!fileList || fileList.length === 0) {
-    alert(
-      "No files to combine. Make sure you are authenticated and files are listed."
-    );
+  const fileItems = Array.from(document.querySelectorAll("#fileList div"));
+  const totalFiles = fileItems.length;
+  if (totalFiles === 0) {
+    alert("No files to combine. Make sure you are authenticated and files are listed.");
     loadingIndicator.classList.add("hidden");
     return;
   }
-  const downloadPromises = Array.from(fileList).map((fileItem) => {
+  
+  let processedCount = 0;
+  const downloadPromises = fileItems.map((fileItem) => {
     const fileId = fileItem.getAttribute("data-file-id");
-    console.log("Downloading file for combine:", fileId);
     return downloadFileAsync(fileId)
       .then((workbook) => {
+        processedCount++;
+        loadingIndicator.textContent = `Loading and combining files, please wait... (${processedCount} of ${totalFiles} files processed)`;
         const sheetName = workbook.SheetNames[0];
         const sheet = workbook.Sheets[sheetName];
-        const json = XLSX.utils.sheet_to_json(sheet);
-        return json;
+        return XLSX.utils.sheet_to_json(sheet);
       })
       .catch((error) => {
+        processedCount++;
+        loadingIndicator.textContent = `Loading and combining files, please wait... (${processedCount} of ${totalFiles} files processed)`;
         console.error("Error processing file:", error);
         return [];
       });
   });
+  
   const results = await Promise.all(downloadPromises);
   results.forEach((jsonArray) => {
     combinedData = combinedData.concat(jsonArray);
@@ -252,14 +253,10 @@ document.addEventListener("DOMContentLoaded", () => {
   gapi.load("client", initializeGapiClient);
   initGis();
 
-  document
-    .getElementById("authButton")
-    .addEventListener("click", authenticate);
+  document.getElementById("authButton").addEventListener("click", authenticate);
 
   // Allow manual refresh (e.g., when new files are added)
-  document
-    .getElementById("refreshButton")
-    .addEventListener("click", combineExcelFiles);
+  document.getElementById("refreshButton").addEventListener("click", combineExcelFiles);
 
   // When "Search" is clicked, search the combined dataset
   document.getElementById("searchButton").addEventListener("click", () => {
