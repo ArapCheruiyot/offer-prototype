@@ -15,9 +15,9 @@ function initializeGapiClient() {
         console.log("GAPI client loaded.");
         enableAuthButton();
       })
-      .catch((error) =>
-        console.error("Error loading GAPI client:", error)
-      );
+      .catch((error) => {
+        console.error("Error loading GAPI client:", error);
+      });
   });
 }
 
@@ -105,14 +105,11 @@ function listFiles() {
 // Download an Excel file and return a Promise that resolves with the workbook
 function downloadFileAsync(fileId) {
   return new Promise((resolve, reject) => {
-    fetch(
-      `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
-      {
-        headers: {
-          Authorization: `Bearer ${gapi.auth.getToken().access_token}`,
-        },
-      }
-    )
+    fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+      headers: {
+        Authorization: `Bearer ${gapi.auth.getToken().access_token}`,
+      },
+    })
       .then((res) => {
         if (!res.ok)
           throw new Error(`Network response was not ok: ${res.statusText}`);
@@ -142,7 +139,15 @@ function downloadFileAsync(fileId) {
 
 // Combine all Excel files into one dataset (an array of records)
 async function combineExcelFiles() {
-  const loadingIndicator = document.getElementById("loadingIndicator");
+  // Safeguard: Ensure the loading indicator exists.
+  let loadingIndicator = document.getElementById("loadingIndicator");
+  if (!loadingIndicator) {
+    loadingIndicator = document.createElement("div");
+    loadingIndicator.id = "loadingIndicator";
+    loadingIndicator.textContent =
+      "Loading and combining files, please wait...";
+    document.querySelector(".container").appendChild(loadingIndicator);
+  }
   loadingIndicator.textContent = "Loading and combining files, please wait...";
   loadingIndicator.classList.remove("hidden");
 
@@ -216,7 +221,6 @@ function searchInCombinedData(searchTerm) {
           resultLabel.className = "result-label";
           resultLabel.textContent = `${field}: `;
           let resultValue = document.createElement("span");
-          // If the field name contains 'date' and the value is numeric, convert it
           if (
             field.toLowerCase().includes("date") &&
             !isNaN(record[field])
@@ -231,7 +235,7 @@ function searchInCombinedData(searchTerm) {
         }
         resultContainer.appendChild(resultItem);
         found = true;
-        break; // Stop checking other fields for this record
+        break; // Stop checking further fields for this record
       }
     }
   });
@@ -248,10 +252,14 @@ document.addEventListener("DOMContentLoaded", () => {
   gapi.load("client", initializeGapiClient);
   initGis();
 
-  document.getElementById("authButton").addEventListener("click", authenticate);
+  document
+    .getElementById("authButton")
+    .addEventListener("click", authenticate);
 
   // Allow manual refresh (e.g., when new files are added)
-  document.getElementById("refreshButton").addEventListener("click", combineExcelFiles);
+  document
+    .getElementById("refreshButton")
+    .addEventListener("click", combineExcelFiles);
 
   // When "Search" is clicked, search the combined dataset
   document.getElementById("searchButton").addEventListener("click", () => {
