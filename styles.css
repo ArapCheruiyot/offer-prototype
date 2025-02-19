@@ -60,7 +60,6 @@ input {
   overflow-y: auto;
 }
 
-/* Simple style for the loading indicator */
 #loadingIndicator {
   margin: 10px;
   font-style: italic;
