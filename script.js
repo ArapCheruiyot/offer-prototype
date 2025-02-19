@@ -90,8 +90,10 @@ function listFiles() {
           fileItem.setAttribute("data-file-id", file.id);
           fileListElement.appendChild(fileItem);
         });
-        // Show refresh button to combine files
+        // Show refresh button in case new files are added later
         document.getElementById("refreshButton").classList.remove("hidden");
+        // Automatically combine files after listing them
+        combineExcelFiles();
       } else {
         fileListElement.textContent = "No Excel files found.";
         console.log("No Excel files found.");
@@ -124,10 +126,7 @@ function downloadFileAsync(fileId) {
         reader.onload = function (e) {
           try {
             let workbook = XLSX.read(e.target.result, { type: "array" });
-            if (
-              !workbook.SheetNames ||
-              workbook.SheetNames.length === 0
-            ) {
+            if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
               throw new Error("Invalid Excel file format.");
             }
             resolve(workbook);
@@ -143,6 +142,10 @@ function downloadFileAsync(fileId) {
 
 // Combine all Excel files into one dataset (an array of records)
 async function combineExcelFiles() {
+  const loadingIndicator = document.getElementById("loadingIndicator");
+  loadingIndicator.textContent = "Loading and combining files, please wait...";
+  loadingIndicator.classList.remove("hidden");
+
   console.log("Combining Excel files...");
   let combinedData = [];
   let fileList = document.querySelectorAll("#fileList div");
@@ -150,6 +153,7 @@ async function combineExcelFiles() {
     alert(
       "No files to combine. Make sure you are authenticated and files are listed."
     );
+    loadingIndicator.classList.add("hidden");
     return;
   }
   const downloadPromises = Array.from(fileList).map((fileItem) => {
@@ -173,7 +177,7 @@ async function combineExcelFiles() {
   });
   window.combinedData = combinedData; // Cache the combined data
   console.log("Combined data ready. Total records:", combinedData.length);
-  alert("Files refreshed and combined successfully!");
+  loadingIndicator.classList.add("hidden");
 }
 
 // Convert an Excel serial date to a JavaScript date string
@@ -193,7 +197,7 @@ function searchInCombinedData(searchTerm) {
 
   if (!window.combinedData || window.combinedData.length === 0) {
     resultContainer.innerHTML =
-      '<div class="result-item">No data available. Please refresh the files first.</div>';
+      '<div class="result-item">No data available. Please refresh the files if new ones have been added.</div>';
     return;
   }
 
@@ -215,11 +219,9 @@ function searchInCombinedData(searchTerm) {
           // If the field name contains 'date' and the value is numeric, convert it
           if (
             field.toLowerCase().includes("date") &&
-            !isNaN(cellVal)
+            !isNaN(record[field])
           ) {
-            resultValue.textContent = excelSerialDateToJSDate(
-              record[field]
-            );
+            resultValue.textContent = excelSerialDateToJSDate(record[field]);
           } else {
             resultValue.textContent = record[field];
           }
@@ -246,26 +248,18 @@ document.addEventListener("DOMContentLoaded", () => {
   gapi.load("client", initializeGapiClient);
   initGis();
 
-  document
-    .getElementById("authButton")
-    .addEventListener("click", authenticate);
+  document.getElementById("authButton").addEventListener("click", authenticate);
 
-  // When "Refresh Files" is clicked, combine all Excel files into one dataset
-  document
-    .getElementById("refreshButton")
-    .addEventListener("click", combineExcelFiles);
+  // Allow manual refresh (e.g., when new files are added)
+  document.getElementById("refreshButton").addEventListener("click", combineExcelFiles);
 
   // When "Search" is clicked, search the combined dataset
-  document
-    .getElementById("searchButton")
-    .addEventListener("click", () => {
-      const searchTerm = document
-        .getElementById("searchInput")
-        .value.trim();
-      if (!searchTerm) {
-        alert("Please enter a search term.");
-        return;
-      }
-      searchInCombinedData(searchTerm);
-    });
+  document.getElementById("searchButton").addEventListener("click", () => {
+    const searchTerm = document.getElementById("searchInput").value.trim();
+    if (!searchTerm) {
+      alert("Please enter a search term.");
+      return;
+    }
+    searchInCombinedData(searchTerm);
+  });
 });
